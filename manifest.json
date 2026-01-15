@@ -2,27 +2,47 @@
 {
   "manifest_version": 3,
   "name": "Web Journey Recorder Pro",
-  "version": "1.2.1",
-  "description": "Herramienta profesional para grabar recorridos de usuario, generar documentación y scripts de prueba con IA.",
+  "version": "1.3.0",
+  "description": "Grabador profesional de recorridos con IA Gemini, soporte para panel lateral y comandos de voz.",
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
     "tabs",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "contextMenus",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "Web Journey Recorder"
+    "default_title": "Abrir Grabador"
   },
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "commands": {
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Iniciar/Detener Grabación"
+    }
+  },
   "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
     "128": "assets/icon-128.png"
   }
 }

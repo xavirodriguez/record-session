@@ -6,7 +6,7 @@ import { ensureOriginPermission } from '../lib/permissions.js';
 
 /**
  * Service Worker Pro - Web Journey Recorder
- * Estándar de Google Chrome Extensions
+ * Soporte para Commands, Side Panel y Context Menus
  */
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -17,7 +17,39 @@ chrome.runtime.onInstalled.addListener(() => {
     startTime: null 
   });
   updateBadge(false, false);
+
+  // Crear menú de contexto
+  chrome.contextMenus.create({
+    id: "start-recording",
+    title: "Iniciar Grabación aquí",
+    contexts: ["all"]
+  });
 });
+
+// Manejo de comandos de teclado
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === "toggle-recording") {
+    const status = await recordingStatus.getStatus();
+    if (status.isRecording) {
+      handleStop(() => {});
+    } else {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.url?.startsWith('http')) {
+        handleStart({ name: `Quick Rec: ${new URL(tab.url).hostname}`, url: tab.url }, () => {});
+      }
+    }
+  }
+});
+
+// Manejo de Menús de Contexto
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "start-recording") {
+    handleStart({ name: "Context Menu Recording", url: tab.url }, () => {});
+  }
+});
+
+// Permitir abrir el Side Panel al hacer clic en el icono
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => console.error(error));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handlers = {
@@ -66,7 +98,7 @@ async function handleStart(payload, sendResponse) {
   try {
     const hasPerm = await ensureOriginPermission(payload.url);
     if (!hasPerm) {
-      sendResponse({ success: false, error: 'Permisos insuficientes' });
+      if (typeof sendResponse === 'function') sendResponse({ success: false, error: 'Permisos insuficientes' });
       return;
     }
 
@@ -84,9 +116,9 @@ async function handleStart(payload, sendResponse) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) injectScripts(tab.id);
 
-    sendResponse({ success: true, sessionId: session.id });
+    if (typeof sendResponse === 'function') sendResponse({ success: true, sessionId: session.id });
   } catch (error) {
-    sendResponse({ success: false, error: error.message });
+    if (typeof sendResponse === 'function') sendResponse({ success: false, error: error.message });
   }
 }
 
@@ -127,7 +159,7 @@ async function handleStop(sendResponse) {
   
   await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
-  sendResponse({ success: true, session });
+  if (typeof sendResponse === 'function') sendResponse({ success: true, session });
 }
 
 async function injectScripts(tabId) {
