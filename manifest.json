@@ -1,0 +1,36 @@
+
+{
+  "manifest_version": 3,
+  "name": "Web Journey Recorder Pro",
+  "version": "1.2.0",
+  "description": "Herramienta profesional para grabar recorridos de usuario, generar documentación y scripts de prueba con IA.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Abrir Web Journey Recorder"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "128": "icon.png"
+  }
+}
