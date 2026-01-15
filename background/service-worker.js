@@ -6,7 +6,7 @@ import { ensureOriginPermission } from '../lib/permissions.js';
 
 /**
  * Service Worker Pro - Web Journey Recorder
- * Soporte para Commands, Side Panel y Context Menus
+ * Estándar Google Chrome Extensions Manifest V3
  */
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -16,17 +16,14 @@ chrome.runtime.onInstalled.addListener(() => {
     sessionId: null, 
     startTime: null 
   });
-  updateBadge(false, false);
 
-  // Crear menú de contexto
   chrome.contextMenus.create({
     id: "start-recording",
-    title: "Iniciar Grabación aquí",
+    title: "Grabar Journey aquí",
     contexts: ["all"]
   });
 });
 
-// Manejo de comandos de teclado
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "toggle-recording") {
     const status = await recordingStatus.getStatus();
@@ -35,21 +32,17 @@ chrome.commands.onCommand.addListener(async (command) => {
     } else {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.url?.startsWith('http')) {
-        handleStart({ name: `Quick Rec: ${new URL(tab.url).hostname}`, url: tab.url }, () => {});
+        handleStart({ name: `Quick: ${new URL(tab.url).hostname}`, url: tab.url }, () => {});
       }
     }
   }
 });
 
-// Manejo de Menús de Contexto
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "start-recording") {
-    handleStart({ name: "Context Menu Recording", url: tab.url }, () => {});
+    handleStart({ name: "Context Menu Session", url: tab.url }, () => {});
   }
 });
-
-// Permitir abrir el Side Panel al hacer clic en el icono
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => console.error(error));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handlers = {
@@ -103,14 +96,7 @@ async function handleStart(payload, sendResponse) {
     }
 
     const session = await sessions.createRecordingSession(payload.name, payload.url);
-    
-    await recordingStatus.updateStatus({ 
-      isRecording: true, 
-      isPaused: false, 
-      sessionId: session.id, 
-      startTime: Date.now() 
-    });
-
+    await recordingStatus.updateStatus({ isRecording: true, isPaused: false, sessionId: session.id, startTime: Date.now() });
     updateBadge(true, false);
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
