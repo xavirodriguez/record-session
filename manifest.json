@@ -2,8 +2,8 @@
 {
   "manifest_version": 3,
   "name": "Web Journey Recorder Pro",
-  "version": "1.3.1",
-  "description": "Grabador profesional de recorridos con IA Gemini, soporte para panel lateral y generación automática de documentación.",
+  "version": "1.3.2",
+  "description": "Grabador profesional de recorridos con IA Gemini y generación de documentación.",
   "permissions": [
     "storage",
     "activeTab",
@@ -18,7 +18,7 @@
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "Abrir Grabador"
+    "default_title": "Web Journey Recorder"
   },
   "background": {
     "service_worker": "background/service-worker.js",

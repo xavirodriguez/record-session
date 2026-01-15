@@ -6,7 +6,7 @@ import { ensureOriginPermission } from '../lib/permissions.js';
 
 /**
  * Service Worker Pro - Web Journey Recorder
- * Estándar Google Chrome Extensions Manifest V3
+ * V3 Standard
  */
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -28,19 +28,13 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === "toggle-recording") {
     const status = await recordingStatus.getStatus();
     if (status.isRecording) {
-      handleStop(() => {});
+      handleStop();
     } else {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.url?.startsWith('http')) {
-        handleStart({ name: `Quick: ${new URL(tab.url).hostname}`, url: tab.url }, () => {});
+        handleStart({ name: `Quick: ${new URL(tab.url).hostname}`, url: tab.url });
       }
     }
-  }
-});
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "start-recording") {
-    handleStart({ name: "Context Menu Session", url: tab.url }, () => {});
   }
 });
 
@@ -91,7 +85,7 @@ async function handleStart(payload, sendResponse) {
   try {
     const hasPerm = await ensureOriginPermission(payload.url);
     if (!hasPerm) {
-      if (typeof sendResponse === 'function') sendResponse({ success: false, error: 'Permisos insuficientes' });
+      if (sendResponse) sendResponse({ success: false, error: 'Permisos insuficientes' });
       return;
     }
 
@@ -102,9 +96,9 @@ async function handleStart(payload, sendResponse) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) injectScripts(tab.id);
 
-    if (typeof sendResponse === 'function') sendResponse({ success: true, sessionId: session.id });
+    if (sendResponse) sendResponse({ success: true, sessionId: session.id });
   } catch (error) {
-    if (typeof sendResponse === 'function') sendResponse({ success: false, error: error.message });
+    if (sendResponse) sendResponse({ success: false, error: error.message });
   }
 }
 
@@ -145,7 +139,7 @@ async function handleStop(sendResponse) {
   
   await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
-  if (typeof sendResponse === 'function') sendResponse({ success: true, session });
+  if (sendResponse) sendResponse({ success: true, session });
 }
 
 async function injectScripts(tabId) {

@@ -4,38 +4,35 @@
 <head>
   <meta charset="UTF-8">
   <title>Configuración - Web Journey Pro</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="index.css">
   <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+    body { overflow: auto; min-width: auto; }
+    .container { max-width: 42rem; margin: 2.5rem auto; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); background: #1e293b; }
+    input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem; color: white; margin-top: 0.5rem; }
+    button { cursor: pointer; border: none; }
   </style>
 </head>
 <body class="p-10">
-  <div class="max-w-2xl mx-auto bg-slate-900 p-8 rounded-2xl border border-white/10">
-    <h1 class="text-3xl font-bold mb-6 text-indigo-400">Configuración Pro</h1>
+  <div class="container">
+    <h1 class="text-xl font-bold mb-6" style="color: #818cf8;">Configuración Pro</h1>
     
-    <div class="space-y-6">
+    <div class="flex flex-col gap-4">
       <section>
-        <label class="block text-sm font-medium mb-2">API Key de Gemini</label>
-        <input type="password" id="apiKey" class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ingresa tu API Key de Google AI Studio">
-        <p class="text-xs text-slate-500 mt-2">Usada para generar scripts de prueba y manuales paso a paso.</p>
+        <label class="text-xs font-bold uppercase">API Key de Gemini</label>
+        <input type="password" id="apiKey" placeholder="Ingresa tu API Key de Google AI Studio">
       </section>
 
       <section>
-        <label class="block text-sm font-medium mb-2">Calidad de Captura</label>
-        <select id="quality" class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 text-white outline-none">
-          <option value="low">Baja (40% - Ahorro de espacio)</option>
-          <option value="medium">Media (70% - Recomendado)</option>
-          <option value="high">Alta (90% - Alta definición)</option>
+        <label class="text-xs font-bold uppercase">Calidad de Captura</label>
+        <select id="quality">
+          <option value="low">Baja (40%)</option>
+          <option value="medium" selected>Media (70%)</option>
+          <option value="high">Alta (90%)</option>
         </select>
       </section>
 
-      <section class="flex items-center gap-3">
-        <input type="checkbox" id="autoOpen" class="w-5 h-5 accent-indigo-500">
-        <label for="autoOpen" class="text-sm">Abrir Panel Lateral automáticamente al iniciar Chrome</label>
-      </section>
-
-      <div class="pt-6">
-        <button id="save" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl transition-all">
+      <div style="margin-top: 1.5rem;">
+        <button id="save" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">
           Guardar Configuración
         </button>
       </div>
