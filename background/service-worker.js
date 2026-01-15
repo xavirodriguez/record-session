@@ -1,15 +1,14 @@
 
-import * as screenshotService from './screenshotService.js';
-import * as sessions from './sessions.js';
-import * as recordingStatus from './recordingStatus.js';
-import { ensureOriginPermission } from './permissions.js';
+import * as screenshotService from '../lib/screenshot-service.js';
+import * as sessions from '../lib/sessions.js';
+import * as recordingStatus from '../lib/recording-status.js';
+import { ensureOriginPermission } from '../lib/permissions.js';
 
 /**
  * Service Worker Pro - Web Journey Recorder
- * Refactor 3 & 5: Centralización de estados y Badges
+ * Estándar de Google Chrome Extensions
  */
 
-// Listener de instalación
 chrome.runtime.onInstalled.addListener(() => {
   recordingStatus.updateStatus({ 
     isRecording: false, 
@@ -20,7 +19,6 @@ chrome.runtime.onInstalled.addListener(() => {
   updateBadge(false, false);
 });
 
-// Router de Mensajes
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handlers = {
     'START_RECORDING': () => handleStart(message.payload, sendResponse),
@@ -83,7 +81,6 @@ async function handleStart(payload, sendResponse) {
 
     updateBadge(true, false);
     
-    // Inyectar en pestaña activa
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) injectScripts(tab.id);
 
@@ -135,7 +132,7 @@ async function handleStop(sendResponse) {
 
 async function injectScripts(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content-script.js'] });
   } catch (e) {}
 }
 

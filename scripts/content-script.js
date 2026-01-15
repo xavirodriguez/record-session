@@ -1,7 +1,6 @@
 
 /**
  * Web Journey Recorder - Content Script Pro
- * Refactor 4: Robustez y sincronización eficiente
  */
 
 (function() {
@@ -45,7 +44,6 @@
     if (!isRecording) return;
     const info = target ? getElementInfo(target) : { selector: 'window' };
     
-    // Bridge de comunicación con manejo de errores silencioso (Refactor 4)
     chrome.runtime.sendMessage({
       type: 'ACTION_RECORDED',
       payload: {
