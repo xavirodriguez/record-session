@@ -33,17 +33,15 @@ const App = () => {
       refreshData();
       checkCurrentTab();
 
-      const handleStorageChange = (changes: any) => {
-        if (changes.webjourney_status) {
-          setStatus(changes.webjourney_status.newValue);
-        }
-        if (changes.webjourney_recording_sessions) {
-          refreshData();
+      const messageListener = (message: any) => {
+        if (message.type === 'STATUS_UPDATED') {
+          setStatus(message.payload);
         }
       };
-      chrome.storage.onChanged.addListener(handleStorageChange);
 
-      return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+      chrome.runtime.onMessage.addListener(messageListener);
+
+      return () => chrome.runtime.onMessage.removeListener(messageListener);
     } else {
       // Fallback for non-extension environment (e.g., testing)
       setTabInfo({ isValid: false, url: 'Not running in extension context' });
@@ -138,7 +136,7 @@ const App = () => {
     setIsGenerating(true); setView('ai'); setAiOutput("Generando contenido...");
     try {
       const configRes = await chrome.storage.local.get(['webjourney_config']);
-      const apiKey = configRes.webjourney_config?.apiKey || process.env.API_KEY;
+      const apiKey = configRes.webjourney_config?.apiKey;
 
       if (!apiKey) {
         setAiOutput("Error: No se ha configurado la API Key. Por favor, ve a la página de Opciones.");

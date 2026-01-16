@@ -9,13 +9,23 @@ import { ensureOriginPermission } from '../lib/permissions.js';
  * V3 Standard
  */
 
+const broadcastStatus = async (status) => {
+  const finalStatus = status || await recordingStatus.getStatus();
+  try {
+    await chrome.runtime.sendMessage({ type: 'STATUS_UPDATED', payload: finalStatus });
+  } catch (e) {
+    // Suppress errors for when popup is not open
+  }
+};
+
+
 chrome.runtime.onInstalled.addListener(() => {
   recordingStatus.updateStatus({ 
     isRecording: false, 
     isPaused: false, 
     sessionId: null, 
     startTime: null 
-  });
+  }).then(broadcastStatus);
 
   chrome.contextMenus.create({
     id: "start-recording",
@@ -42,14 +52,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handlers = {
     'START_RECORDING': () => handleStart(message.payload, sendResponse),
     'STOP_RECORDING': () => handleStop(sendResponse),
-    'PAUSE_RECORDING': () => {
-      recordingStatus.updateStatus({ isPaused: true });
+    'PAUSE_RECORDING': async () => {
+      const newStatus = await recordingStatus.updateStatus({ isPaused: true });
       updateBadge(true, true);
+      broadcastStatus(newStatus);
       sendResponse({ success: true });
     },
-    'RESUME_RECORDING': () => {
-      recordingStatus.updateStatus({ isPaused: false });
+    'RESUME_RECORDING': async () => {
+      const newStatus = await recordingStatus.updateStatus({ isPaused: false });
       updateBadge(true, false);
+      broadcastStatus(newStatus);
       sendResponse({ success: true });
     },
     'ACTION_RECORDED': () => handleAction(message.payload, sender.tab),
@@ -90,11 +102,18 @@ async function handleStart(payload, sendResponse) {
     }
 
     const session = await sessions.createRecordingSession(payload.name, payload.url);
-    await recordingStatus.updateStatus({ isRecording: true, isPaused: false, sessionId: session.id, startTime: Date.now() });
+    const newStatus = await recordingStatus.updateStatus({ isRecording: true, isPaused: false, sessionId: session.id, startTime: Date.now() });
     updateBadge(true, false);
+    broadcastStatus(newStatus);
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) injectScripts(tab.id);
+    if (tab?.id) {
+        const injected = await injectScripts(tab.id);
+        if(!injected){
+            if (sendResponse) sendResponse({ success: false, error: 'No se pudo inyectar el script en la página. Inténtalo de nuevo o recarga la pestaña.' });
+            return;
+        }
+    }
 
     if (sendResponse) sendResponse({ success: true, sessionId: session.id });
   } catch (error) {
@@ -137,15 +156,22 @@ async function handleStop(sendResponse) {
   const allSessions = await sessions.getRecordingSessions();
   const session = allSessions.find(s => s.id === status.sessionId);
   
-  await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
+  const newStatus = await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
+  broadcastStatus(newStatus);
+
   if (sendResponse) sendResponse({ success: true, session });
 }
 
 async function injectScripts(tabId) {
-  try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
-  } catch (e) {}
+    try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
+        return true;
+    } catch (e) {
+        console.error(`Web Journey Recorder: Failed to inject content script in tab ${tabId}.`, e);
+        await handleStop();
+        return false;
+    }
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
