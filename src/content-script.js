@@ -10,19 +10,21 @@
   let isRecording = false;
   let sessionId = null;
 
-  const syncState = () => {
-    chrome.storage.local.get(['webjourney_status'], (res) => {
-      const status = res.webjourney_status || {};
-      isRecording = status.isRecording && !status.isPaused;
-      sessionId = status.sessionId;
-    });
+  const updateState = (status) => {
+    isRecording = status.isRecording && !status.isPaused;
+    sessionId = status.sessionId;
   };
 
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.webjourney_status) syncState();
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'STATUS_UPDATED') {
+      updateState(message.payload);
+    }
   });
 
-  syncState();
+  // Request initial state on injection
+  chrome.storage.local.get(['webjourney_status'], (res) => {
+    if (res.webjourney_status) updateState(res.webjourney_status);
+  });
 
   const getElementInfo = (el) => {
     if (!el) return null;
@@ -52,7 +54,9 @@
         timestamp: Date.now(),
         data: { ...info, ...extra }
       }
-    }).catch(() => {}); 
+    }).catch((e) => {
+        console.error("Web Journey Recorder: Could not send message to service worker.", e);
+    });
   };
 
   document.addEventListener('mousedown', (e) => {
