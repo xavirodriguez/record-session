@@ -28,21 +28,26 @@ const App = () => {
   const dragOverItem = useRef<number | null>(null);
 
   useEffect(() => {
-    refreshStatus();
-    refreshData();
-    checkCurrentTab();
-    
-    const handleStorageChange = (changes: any) => {
-      if (changes.webjourney_status) {
-        setStatus(changes.webjourney_status.newValue);
-      }
-      if (changes.webjourney_recording_sessions) {
-        refreshData();
-      }
-    };
-    chrome.storage.onChanged.addListener(handleStorageChange);
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
+      refreshStatus();
+      refreshData();
+      checkCurrentTab();
 
-    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+      const handleStorageChange = (changes: any) => {
+        if (changes.webjourney_status) {
+          setStatus(changes.webjourney_status.newValue);
+        }
+        if (changes.webjourney_recording_sessions) {
+          refreshData();
+        }
+      };
+      chrome.storage.onChanged.addListener(handleStorageChange);
+
+      return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+    } else {
+      // Fallback for non-extension environment (e.g., testing)
+      setTabInfo({ isValid: false, url: 'Not running in extension context' });
+    }
   }, []);
 
   useEffect(() => {
@@ -196,6 +201,14 @@ const App = () => {
     chrome.runtime.sendMessage({ type: 'REORDER_ACTIONS', sessionId: selectedSession.id, actions: copyListItems });
   };
 
+  const openOptionsPage = () => {
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      console.log("Cannot open options page: Not in an extension context.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 text-sm overflow-hidden antialiased">
       <header className="p-4 glass border-b border-white/10 flex justify-between items-center z-50">
@@ -210,7 +223,7 @@ const App = () => {
           <button onClick={() => setView('recorder')} className={`p-2 rounded-lg transition-colors ${view === 'recorder' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Grabar"><Play size={16}/></button>
           <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg transition-colors ${view === 'history' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Historial"><History size={16}/></button>
           <button onClick={() => setView('storage')} className={`p-2 rounded-lg transition-colors ${view === 'storage' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Almacenamiento"><HardDrive size={16}/></button>
-          <button onClick={() => chrome.runtime.openOptionsPage()} className="p-2 rounded-lg text-slate-400 hover:bg-white/5" title="Opciones"><Settings size={16}/></button>
+          <button onClick={openOptionsPage} className="p-2 rounded-lg text-slate-400 hover:bg-white/5" title="Opciones"><Settings size={16}/></button>
         </div>
       </header>
 

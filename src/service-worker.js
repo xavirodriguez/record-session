@@ -144,7 +144,7 @@ async function handleStop(sendResponse) {
 
 async function injectScripts(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content-script.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
   } catch (e) {}
 }
 

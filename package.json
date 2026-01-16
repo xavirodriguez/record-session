@@ -5,7 +5,7 @@
   "description": "Chrome Extension for recording user journeys with Gemini AI",
   "type": "module",
   "scripts": {
-    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true }); fs.mkdirSync('dist/background', { recursive: true }); fs.mkdirSync('dist/scripts', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
+    "build": "rm -rf dist && esbuild src/index.tsx src/service-worker.js src/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify --entry-names=[name] && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
