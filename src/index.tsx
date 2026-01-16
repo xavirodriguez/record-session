@@ -23,6 +23,7 @@ const App = () => {
   const [storageInfo, setStorageInfo] = useState({ count: 0, totalSizeMB: "0.00" });
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [version, setVersion] = useState('');
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -46,6 +47,8 @@ const App = () => {
       // Fallback for non-extension environment (e.g., testing)
       setTabInfo({ isValid: false, url: 'Not running in extension context' });
     }
+    const manifest = chrome.runtime.getManifest();
+    setVersion(manifest.version);
   }, []);
 
   useEffect(() => {
@@ -372,7 +375,7 @@ const App = () => {
           <div className={`w-1.5 h-1.5 rounded-full ${status.isRecording ? (status.isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse') : 'bg-slate-700'}`}></div>
           {status.isRecording ? (status.isPaused ? 'En Pausa' : 'Grabando...') : 'Sistema Listo'}
         </div>
-        <div>v1.3.1 PRO</div>
+        <div>v{version} PRO</div>
       </footer>
     </div>
   );
