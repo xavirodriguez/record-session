@@ -106,7 +106,9 @@ const App = () => {
   };
 
   const deleteSession = (id: string) => {
-    chrome.runtime.sendMessage({ type: 'DELETE_SESSION', payload: id }, refreshData);
+    if (window.confirm("Are you sure you want to delete this session?")) {
+      chrome.runtime.sendMessage({ type: 'DELETE_SESSION', payload: id }, refreshData);
+    }
   };
 
   const openDetail = (session: any) => {
