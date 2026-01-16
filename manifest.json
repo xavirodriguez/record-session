@@ -2,8 +2,8 @@
 {
   "manifest_version": 3,
   "name": "Web Journey Recorder Pro",
-  "version": "1.3.2",
-  "description": "Grabador profesional de recorridos con IA Gemini y generación de documentación.",
+  "version": "1.9.0",
+  "description": "Grabador técnico de recorridos de usuario con auditoría de tráfico de red y capturas de pantalla.",
   "permissions": [
     "storage",
     "activeTab",

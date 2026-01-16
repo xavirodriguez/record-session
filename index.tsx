@@ -6,12 +6,11 @@ declare var chrome: any;
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
-  Play, Square, Trash2, Code, MousePointer2, 
-  History, Copy, ArrowLeft, Loader2, 
-  Pause, HardDrive, ChevronRight, Activity,
-  FileText, Edit3, Settings, Globe, Zap, AlertCircle, Database
+  Play, Square, Trash2, MousePointer2, 
+  History, ArrowLeft,
+  ChevronRight, Activity,
+  Edit3, Settings, Globe, Zap, Database
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 
 // Wrapper de seguridad para evitar errores 'undefined' en entornos fuera de la extensión
 const safeChrome = {
@@ -68,13 +67,11 @@ const safeChrome = {
 };
 
 const App = () => {
-  const [view, setView] = useState<'recorder' | 'history' | 'ai' | 'detail'>('recorder');
+  const [view, setView] = useState<'recorder' | 'history' | 'detail'>('recorder');
   const [status, setStatus] = useState({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [screenshots, setScreenshots] = useState<Record<string, string>>({});
-  const [aiOutput, setAiOutput] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
 
   const refreshStatus = useCallback(() => {
@@ -138,34 +135,6 @@ const App = () => {
     });
   };
 
-  const generateAI = async (type: 'test' | 'docs', session: any) => {
-    setIsGenerating(true); setView('ai'); setAiOutput("Analizando Full-Stack Journey...");
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      const prompt = `Actúa como un Senior Full-Stack QA Engineer. Analiza este log de eventos que mezcla interacciones de UI y Tráfico de Red (APIs):
-      
-      ${JSON.stringify(session.actions, null, 2)}
-      
-      INSTRUCCIONES:
-      1. Genera ${type === 'test' ? 'un script de Playwright profesional que valide la UI y las respuestas de red asociadas' : 'documentación técnica de la integración entre la UI y los Endpoints de API capturados'}.
-      2. Agrupa las llamadas de red que ocurrieron inmediatamente después de una acción de UI.
-      3. Destaca cualquier error de red (Status >= 400).
-      4. Responde en Markdown profesional en español.`;
-      
-      const response = await ai.models.generateContent({ 
-        model: 'gemini-3-pro-preview', 
-        contents: prompt,
-        config: { thinkingConfig: { thinkingBudget: 2500 } }
-      });
-      setAiOutput(response.text || "Error en generación.");
-      setIsGenerating(false);
-    } catch (e) { 
-      setAiOutput("Error de conexión con la IA."); 
-      setIsGenerating(false);
-    }
-  };
-
   const getActionIcon = (type: string) => {
     switch(type) {
       case 'click': return <MousePointer2 size={12} />;
@@ -184,7 +153,7 @@ const App = () => {
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Activity size={16} className="text-white" /></div>
           <div>
             <span className="font-bold tracking-tight text-white uppercase text-[10px] block leading-none">Journey Pro</span>
-            <span className="text-indigo-400 text-[9px] font-black tracking-widest uppercase">Full-Stack Monitor</span>
+            <span className="text-indigo-400 text-[9px] font-black tracking-widest uppercase">Full-Stack Auditor</span>
           </div>
         </div>
         <div className="flex gap-1">
@@ -203,7 +172,7 @@ const App = () => {
                    <div className="absolute inset-0 rounded-full border border-indigo-500/20 animate-ping opacity-20"></div>
                    <Play size={32} className="text-indigo-400 ml-1" />
                 </div>
-                <div><h2 className="text-xl font-black text-white uppercase">Grabador Inteligente</h2><p className="text-xs text-slate-500 mt-2 max-w-[200px] mx-auto">Guardaremos cada interacción y cada llamada al servidor automáticamente.</p></div>
+                <div><h2 className="text-xl font-black text-white uppercase">Grabador de Sesión</h2><p className="text-xs text-slate-500 mt-2 max-w-[200px] mx-auto">Captura interacciones UI y llamadas de red para depuración técnica.</p></div>
                 <button onClick={startRecording} disabled={!tabInfo.isValid} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-black shadow-xl shadow-indigo-600/20 transition-all active:scale-95">INICIAR CAPTURA</button>
               </>
             ) : (
@@ -211,7 +180,7 @@ const App = () => {
                 <div className="w-28 h-28 mx-auto rounded-full flex items-center justify-center border-4 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]"><Square size={40} className="text-red-500" fill="currentColor"/></div>
                 <div className="space-y-1">
                   <h2 className="text-2xl font-black text-red-500 uppercase tracking-[0.2em]">Grabando</h2>
-                  <p className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1 uppercase tracking-widest"><Globe size={10} className="text-indigo-400"/> API Interceptor On</p>
+                  <p className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1 uppercase tracking-widest"><Globe size={10} className="text-indigo-400"/> Monitor de Red Activo</p>
                 </div>
                 <button onClick={stopRecording} className="bg-red-600 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-2 shadow-2xl shadow-red-600/30 active:scale-95 transition-all"><Square size={16} fill="white"/> FINALIZAR</button>
               </div>
@@ -281,29 +250,6 @@ const App = () => {
                 </div>
               ))}
             </div>
-            <div className="p-4 glass border-t border-white/10 grid grid-cols-2 gap-3">
-              <button onClick={() => generateAI('test', selectedSession)} className="bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-black text-white text-[10px] uppercase tracking-widest flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"><Code size={12}/> Generar Test</button>
-              <button onClick={() => generateAI('docs', selectedSession)} className="bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-black text-white text-[10px] uppercase tracking-widest flex justify-center items-center gap-2 active:scale-95 transition-all"><FileText size={12}/> Documentar</button>
-            </div>
-          </div>
-        )}
-
-        {view === 'ai' && (
-          <div className="h-full flex flex-col p-4 animate-in slide-in-from-right-4">
-            <button onClick={() => setView('detail')} className="flex items-center gap-2 text-slate-500 mb-4 text-[10px] font-black uppercase hover:text-white transition-colors"><ArrowLeft size={12}/> Volver al Journey</button>
-            <div className="flex-1 bg-black/40 rounded-2xl p-5 font-mono text-[10px] overflow-y-auto custom-scrollbar border border-white/10 relative">
-              {isGenerating ? (
-                <div className="h-full flex flex-col items-center justify-center gap-4 opacity-50">
-                  <Loader2 size={32} className="animate-spin text-indigo-500" />
-                  <p className="uppercase tracking-[0.2em] text-[8px] font-black text-indigo-400">Analizando Capa UI y Red...</p>
-                </div>
-              ) : (
-                <div className="relative">
-                  <button onClick={() => { navigator.clipboard.writeText(aiOutput); alert("Copiado"); }} className="absolute -top-2 -right-2 p-2 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-500"><Copy size={12}/></button>
-                  <div className="whitespace-pre-wrap text-slate-300 leading-relaxed prose prose-invert max-w-none">{aiOutput}</div>
-                </div>
-              )}
-            </div>
           </div>
         )}
       </main>
@@ -311,11 +257,11 @@ const App = () => {
       <footer className="p-3 bg-slate-900 border-t border-white/5 flex justify-between items-center text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">
         <div className="flex items-center gap-2">
           <div className={`w-1.5 h-1.5 rounded-full ${status.isRecording ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-slate-800'}`}></div>
-          {status.isRecording ? 'Captura Full-Stack Habilitada' : 'Observador en Standby'}
+          {status.isRecording ? 'Captura Técnica Habilitada' : 'Observador en Standby'}
         </div>
         <div className="flex items-center gap-1">
           <Zap size={8} className="text-indigo-500"/>
-          <span>v1.8.0 PRO</span>
+          <span>v1.9.0 AUDIT</span>
         </div>
       </footer>
     </div>

@@ -1,5 +1,5 @@
 {
-  "description": "A professional-grade Web Journey Recorder Chrome Extension with Gemini AI powered test generation and documentation capabilities.",
+  "description": "A professional-grade technical Web Journey Recorder Chrome Extension with network auditing and screenshot capabilities.",
   "requestFramePermissions": [],
-  "name": "Record session"
+  "name": "Web Journey Recorder Audit"
 }
