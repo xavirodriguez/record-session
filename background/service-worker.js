@@ -5,11 +5,6 @@ import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema } from '../lib/domain-schemas.js';
 
-/**
- * Service Worker Pro - Web Journey Recorder
- * V1.9.0 - Integración Zod en Frontera de Mensajes
- */
-
 const actionQueue = [];
 let isProcessingQueue = false;
 
@@ -38,17 +33,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         updateBadge(true, false);
         return { success: true };
       case 'ACTION_RECORDED':
-        // VALIDACIÓN EN FRONTERA: Si la acción no cumple el esquema, se descarta antes de entrar a la cola
         const validation = ActionSchema.safeParse(message.payload);
-        if (!validation.success) {
-          console.warn("Acción inválida recibida de la UI:", validation.error.format());
-          return { success: false, error: "Invalid action schema" };
-        }
+        if (!validation.success) return { success: false, error: "Invalid action schema" };
         actionQueue.push({ action: validation.data, tab: sender.tab });
         processQueue();
         return { success: true };
       case 'GET_SESSIONS':
-        return await sessions.getRecordingSessions();
+        // Ahora devuelve solo Metadatos (O(N) ligero)
+        return await sessions.getSessionsMetadata();
+      case 'GET_SESSION_ACTIONS':
+        // Devuelve las acciones de una sesión específica (O(M) shard)
+        return await sessions.getSessionActions(message.payload);
       case 'GET_SCREENSHOT':
         return await screenshotService.getScreenshot(message.payload);
       case 'DELETE_SESSION':
@@ -66,16 +61,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function processQueue() {
   if (isProcessingQueue || actionQueue.length === 0) return;
   isProcessingQueue = true;
-
   while (actionQueue.length > 0) {
     const { action, tab } = actionQueue.shift();
     try {
       await handleAction(action, tab);
     } catch (e) {
-      console.error("Error procesando acción en cola:", e);
+      console.error("Error procesando acción:", e);
     }
   }
-
   isProcessingQueue = false;
 }
 
@@ -128,22 +121,23 @@ async function handleAction(action, tab) {
           elementId = await screenshotService.storeExtractedElement(screenshotId, extractedBlob, action.data.viewportRect, action.data.tagName, action.data.text, action.id);
         }
       }
-    } catch (e) {
-      console.warn("Fallo captura de pantalla:", e);
-    }
+    } catch (e) {}
   }
 
-  // La acción ya viene validada desde el listener inicial
   await sessions.updateSessionActions(status.sessionId, { ...action, screenshotId, elementId });
 }
 
 async function handleStop() {
   const status = await recordingStatus.getStatus();
-  const allSessions = await sessions.getRecordingSessions();
-  const session = allSessions.find(s => s.id === status.sessionId);
+  const metadataList = await sessions.getSessionsMetadata();
+  const sessionMeta = metadataList.find(s => s.id === status.sessionId);
+  
   await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
-  return { success: true, session };
+  
+  // Obtenemos las acciones para el retorno completo al cerrar
+  const actions = await sessions.getSessionActions(status.sessionId);
+  return { success: true, session: { ...sessionMeta, actions } };
 }
 
 async function injectScripts(tabId) {
