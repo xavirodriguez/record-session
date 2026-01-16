@@ -23,32 +23,26 @@ const App = () => {
   const [storageInfo, setStorageInfo] = useState({ count: 0, totalSizeMB: "0.00" });
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [version, setVersion] = useState('');
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
   useEffect(() => {
-    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
-      refreshStatus();
-      refreshData();
-      checkCurrentTab();
+    refreshStatus();
+    refreshData();
+    checkCurrentTab();
+    
+    const handleStorageChange = (changes: any) => {
+      if (changes.webjourney_status) {
+        setStatus(changes.webjourney_status.newValue);
+      }
+      if (changes.webjourney_recording_sessions) {
+        refreshData();
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
 
-      const messageListener = (message: any) => {
-        if (message.type === 'STATUS_UPDATED') {
-          setStatus(message.payload);
-        }
-      };
-
-      chrome.runtime.onMessage.addListener(messageListener);
-
-      return () => chrome.runtime.onMessage.removeListener(messageListener);
-    } else {
-      // Fallback for non-extension environment (e.g., testing)
-      setTabInfo({ isValid: false, url: 'Not running in extension context' });
-    }
-    const manifest = chrome.runtime.getManifest();
-    setVersion(manifest.version);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
   useEffect(() => {
@@ -107,9 +101,7 @@ const App = () => {
   };
 
   const deleteSession = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this session?")) {
-      chrome.runtime.sendMessage({ type: 'DELETE_SESSION', payload: id }, refreshData);
-    }
+    chrome.runtime.sendMessage({ type: 'DELETE_SESSION', payload: id }, refreshData);
   };
 
   const openDetail = (session: any) => {
@@ -139,7 +131,7 @@ const App = () => {
     setIsGenerating(true); setView('ai'); setAiOutput("Generando contenido...");
     try {
       const configRes = await chrome.storage.local.get(['webjourney_config']);
-      const apiKey = configRes.webjourney_config?.apiKey;
+      const apiKey = configRes.webjourney_config?.apiKey || process.env.API_KEY;
 
       if (!apiKey) {
         setAiOutput("Error: No se ha configurado la API Key. Por favor, ve a la página de Opciones.");
@@ -204,14 +196,6 @@ const App = () => {
     chrome.runtime.sendMessage({ type: 'REORDER_ACTIONS', sessionId: selectedSession.id, actions: copyListItems });
   };
 
-  const openOptionsPage = () => {
-    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
-      chrome.runtime.openOptionsPage();
-    } else {
-      console.log("Cannot open options page: Not in an extension context.");
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 text-sm overflow-hidden antialiased">
       <header className="p-4 glass border-b border-white/10 flex justify-between items-center z-50">
@@ -226,7 +210,7 @@ const App = () => {
           <button onClick={() => setView('recorder')} className={`p-2 rounded-lg transition-colors ${view === 'recorder' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Grabar"><Play size={16}/></button>
           <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg transition-colors ${view === 'history' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Historial"><History size={16}/></button>
           <button onClick={() => setView('storage')} className={`p-2 rounded-lg transition-colors ${view === 'storage' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-white/5'}`} title="Almacenamiento"><HardDrive size={16}/></button>
-          <button onClick={openOptionsPage} className="p-2 rounded-lg text-slate-400 hover:bg-white/5" title="Opciones"><Settings size={16}/></button>
+          <button onClick={() => chrome.runtime.openOptionsPage()} className="p-2 rounded-lg text-slate-400 hover:bg-white/5" title="Opciones"><Settings size={16}/></button>
         </div>
       </header>
 
@@ -375,7 +359,7 @@ const App = () => {
           <div className={`w-1.5 h-1.5 rounded-full ${status.isRecording ? (status.isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse') : 'bg-slate-700'}`}></div>
           {status.isRecording ? (status.isPaused ? 'En Pausa' : 'Grabando...') : 'Sistema Listo'}
         </div>
-        <div>v{version} PRO</div>
+        <div>v1.3.1 PRO</div>
       </footer>
     </div>
   );

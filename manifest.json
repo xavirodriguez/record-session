@@ -13,12 +13,15 @@
     "contextMenus",
     "sidePanel"
   ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "action": {
     "default_popup": "index.html",
     "default_title": "Web Journey Recorder"
   },
   "background": {
-    "service_worker": "service-worker.js",
+    "service_worker": "background/service-worker.js",
     "type": "module"
   },
   "options_ui": {

@@ -1,6 +1,7 @@
 
 /**
  * Web Journey Recorder - Content Script Pro
+ * Refactor 4: Robustez y sincronización eficiente
  */
 
 (function() {
@@ -10,21 +11,19 @@
   let isRecording = false;
   let sessionId = null;
 
-  const updateState = (status) => {
-    isRecording = status.isRecording && !status.isPaused;
-    sessionId = status.sessionId;
+  const syncState = () => {
+    chrome.storage.local.get(['webjourney_status'], (res) => {
+      const status = res.webjourney_status || {};
+      isRecording = status.isRecording && !status.isPaused;
+      sessionId = status.sessionId;
+    });
   };
 
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'STATUS_UPDATED') {
-      updateState(message.payload);
-    }
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.webjourney_status) syncState();
   });
 
-  // Request initial state on injection
-  chrome.storage.local.get(['webjourney_status'], (res) => {
-    if (res.webjourney_status) updateState(res.webjourney_status);
-  });
+  syncState();
 
   const getElementInfo = (el) => {
     if (!el) return null;
@@ -46,6 +45,7 @@
     if (!isRecording) return;
     const info = target ? getElementInfo(target) : { selector: 'window' };
     
+    // Bridge de comunicación con manejo de errores silencioso (Refactor 4)
     chrome.runtime.sendMessage({
       type: 'ACTION_RECORDED',
       payload: {
@@ -54,9 +54,7 @@
         timestamp: Date.now(),
         data: { ...info, ...extra }
       }
-    }).catch((e) => {
-        console.error("Web Journey Recorder: Could not send message to service worker.", e);
-    });
+    }).catch(() => {}); 
   };
 
   document.addEventListener('mousedown', (e) => {

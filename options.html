@@ -6,36 +6,47 @@
   <title>Configuración - Web Journey Pro</title>
   <link rel="stylesheet" href="index.css">
   <style>
-    body { overflow: auto; min-width: auto; }
-    .container { max-width: 42rem; margin: 2.5rem auto; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); background: #1e293b; }
-    input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem; color: white; margin-top: 0.5rem; }
-    button { cursor: pointer; border: none; }
+    body { overflow: auto; min-width: auto; background-color: #0f172a; color: white; }
+    .container { max-width: 32rem; margin: 3rem auto; padding: 2.5rem; border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.1); background: #1e293b; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+    .field-group { margin-bottom: 1.5rem; }
+    label { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    input[type="password"], select { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 0.8rem; color: white; transition: border-color 0.2s; }
+    input:focus, select:focus { border-color: #6366f1; outline: none; }
+    .checkbox-group { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    input[type="checkbox"] { width: 1.2rem; height: 1.2rem; accent-color: #6366f1; }
+    button { cursor: pointer; border: none; transition: transform 0.1s, background-color 0.2s; }
+    button:active { transform: scale(0.98); }
   </style>
 </head>
-<body class="p-10">
+<body>
   <div class="container">
-    <h1 class="text-xl font-bold mb-6" style="color: #818cf8;">Configuración Pro</h1>
+    <h1 class="text-xl font-bold mb-6" style="color: #818cf8; margin-bottom: 2rem;">Configuración Pro</h1>
     
-    <div class="flex flex-col gap-4">
-      <section>
-        <label class="text-xs font-bold uppercase">API Key de Gemini</label>
-        <input type="password" id="apiKey" placeholder="Ingresa tu API Key de Google AI Studio">
-      </section>
+    <div class="field-group">
+      <label>API Key de Gemini</label>
+      <input type="password" id="apiKey" placeholder="Ingresa tu API Key de Google AI Studio">
+    </div>
 
-      <section>
-        <label class="text-xs font-bold uppercase">Calidad de Captura</label>
-        <select id="quality">
-          <option value="low">Baja (40%)</option>
-          <option value="medium" selected>Media (70%)</option>
-          <option value="high">Alta (90%)</option>
-        </select>
-      </section>
+    <div class="field-group">
+      <label>Calidad de Captura</label>
+      <select id="quality">
+        <option value="low">Baja (40%)</option>
+        <option value="medium" selected>Media (70%)</option>
+        <option value="high">Alta (90%)</option>
+      </select>
+    </div>
 
-      <div style="margin-top: 1.5rem;">
-        <button id="save" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">
-          Guardar Configuración
-        </button>
-      </div>
+    <div class="field-group">
+      <label class="checkbox-group">
+        <input type="checkbox" id="autoOpen">
+        <span>Abrir panel automáticamente al grabar</span>
+      </label>
+    </div>
+
+    <div style="margin-top: 2.5rem;">
+      <button id="save" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg">
+        Guardar Configuración
+      </button>
     </div>
   </div>
   <script type="module" src="options.js"></script>

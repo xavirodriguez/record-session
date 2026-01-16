@@ -5,7 +5,7 @@
   "description": "Chrome Extension for recording user journeys with Gemini AI",
   "type": "module",
   "scripts": {
-    "build": "rm -rf dist && esbuild src/index.tsx src/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify --entry-names=[name] --allow-overwrite && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css', 'src/service-worker.js'].forEach(f => fs.copyFileSync(f, 'dist/' + f.split('/').pop()));\" && mkdir -p dist/lib && node -e \"const fs = require('fs'); fs.readdirSync('src/lib').forEach(f => fs.copyFileSync('src/lib/' + f, 'dist/lib/' + f));\"",
+    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true }); fs.mkdirSync('dist/background', { recursive: true }); fs.mkdirSync('dist/scripts', { recursive: true }); fs.mkdirSync('dist/lib', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js lib/screenshot-service.js lib/sessions.js lib/recording-status.js lib/permissions.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify --define:process.env.API_KEY='\"\"' && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
