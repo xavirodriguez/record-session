@@ -1,8 +1,8 @@
 
-import * as screenshotService from '../lib/screenshot-service.js';
-import * as sessions from '../lib/sessions.js';
-import * as recordingStatus from '../lib/recording-status.js';
-import { ensureOriginPermission } from '../lib/permissions.js';
+import * as screenshotService from './lib/screenshot-service.js';
+import * as sessions from './lib/sessions.js';
+import * as recordingStatus from './lib/recording-status.js';
+import { ensureOriginPermission } from './lib/permissions.js';
 
 /**
  * Service Worker Pro - Web Journey Recorder
@@ -115,16 +115,8 @@ async function handleAction(action, tab) {
       screenshotId = await screenshotService.storeScreenshot(dataUrl, tab.url, tab.id, status.sessionId);
       
       if (action.data.viewportRect) {
-        const db = await screenshotService.openDatabase();
-        const screenshotObj = await new Promise(r => {
-          const req = db.transaction('screenshots').objectStore('screenshots').get(screenshotId);
-          req.onsuccess = () => r(req.result);
-        });
-        
-        if (screenshotObj?.data) {
-          const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
-          elementId = await screenshotService.storeExtractedElement(screenshotId, extractedBlob, action.data.viewportRect, action.data.tagName, action.data.text, action.id);
-        }
+        const extractedBlob = await screenshotService.extractElementFromScreenshot(dataUrl, action.data.viewportRect);
+        elementId = await screenshotService.storeExtractedElement(screenshotId, extractedBlob, action.data.viewportRect, action.data.tagName, action.data.text, action.id);
       }
     } catch (e) {}
   }
