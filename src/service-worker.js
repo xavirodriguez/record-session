@@ -126,7 +126,9 @@ async function handleAction(action, tab) {
           elementId = await screenshotService.storeExtractedElement(screenshotId, extractedBlob, action.data.viewportRect, action.data.tagName, action.data.text, action.id);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error taking screenshot:', e);
+    }
   }
 
   await sessions.updateSessionActions(status.sessionId, { ...action, screenshotId, elementId });
@@ -145,7 +147,9 @@ async function handleStop(sendResponse) {
 async function injectScripts(tabId) {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
-  } catch (e) {}
+  } catch (e) {
+    console.error(`Failed to inject script in tab ${tabId}:`, e);
+  }
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
