@@ -21,7 +21,7 @@
     "default_title": "Web Journey Recorder"
   },
   "background": {
-    "service_worker": "background/service-worker.js",
+    "service_worker": "service-worker.js",
     "type": "module"
   },
   "options_ui": {
