@@ -1,7 +1,7 @@
 
 /**
  * Web Journey Recorder Pro - Content Script
- * Captura avanzada de interacciones y tráfico de Red
+ * Blindado para captura de Red y UI
  */
 
 (function() {
@@ -11,8 +11,8 @@
   let isRecording = false;
   let sessionId = null;
 
-  // Sincronizar estado con el almacenamiento local
   const syncState = () => {
+    if (typeof chrome === 'undefined' || !chrome.storage) return;
     chrome.storage.local.get(['webjourney_status'], (res) => {
       const status = res.webjourney_status || {};
       isRecording = status.isRecording && !status.isPaused;
@@ -20,44 +20,49 @@
     });
   };
 
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.webjourney_status) syncState();
-  });
-
-  syncState();
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.webjourney_status) syncState();
+    });
+    syncState();
+  }
 
   const getElementInfo = (el) => {
     if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    return {
-      selector: el.id ? `#${el.id}` : el.tagName.toLowerCase(),
-      tagName: el.tagName,
-      text: (el.innerText || el.value || "").slice(0, 50).trim(),
-      viewportRect: {
-        left: Math.round(rect.left),
-        top: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height)
-      }
-    };
+    try {
+      const rect = el.getBoundingClientRect();
+      return {
+        selector: el.id ? `#${el.id}` : el.tagName?.toLowerCase() || 'unknown',
+        tagName: el.tagName || 'UNKNOWN',
+        text: (el.innerText || el.value || "").slice(0, 50).trim(),
+        viewportRect: {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        }
+      };
+    } catch(e) { return null; }
   };
 
   const recordAction = (type, target, extra = {}) => {
     if (!isRecording) return;
     const info = target ? getElementInfo(target) : { selector: 'window' };
     
-    chrome.runtime.sendMessage({
-      type: 'ACTION_RECORDED',
-      payload: {
-        id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        type,
-        timestamp: Date.now(),
-        data: { ...info, ...extra }
-      }
-    }).catch(() => {}); 
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({
+        type: 'ACTION_RECORDED',
+        payload: {
+          id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          type,
+          timestamp: Date.now(),
+          data: { ...info, ...extra }
+        }
+      }).catch(() => {}); 
+    }
   };
 
-  // --- INTERCEPCIÓN DE RED (INYECTADO EN EL CONTEXTO DE LA PÁGINA) ---
+  // --- INTERCEPCIÓN DE RED PRO ---
   const injectNetworkInterceptor = () => {
     const script = document.createElement('script');
     script.textContent = `
@@ -67,30 +72,30 @@
         const originalXHRSend = window.XMLHttpRequest.prototype.send;
 
         const reportNetwork = (method, url, type, status) => {
-          // Evitar ruido de analytics o de la propia extensión
-          if (url.includes('google-analytics') || url.startsWith('chrome-extension://')) return;
+          if (!url || url.includes('google-analytics') || url.startsWith('chrome-extension://') || url.includes('/livereload')) return;
           
           window.dispatchEvent(new CustomEvent('wj_pro_network_event', {
             detail: { method, url, type, status, timestamp: Date.now() }
           }));
         };
 
-        // Interceptar Fetch
         window.fetch = async (...args) => {
+          let method = 'GET';
+          let url = '';
+          if (typeof args[0] === 'string') { url = args[0]; }
+          else if (args[0] instanceof Request) { url = args[0].url; method = args[0].method; }
+          if (args[1]?.method) method = args[1].method;
+
           try {
             const response = await originalFetch(...args);
-            const url = typeof args[0] === 'string' ? args[0] : args[0].url;
-            const method = args[1]?.method || 'GET';
             reportNetwork(method, url, 'fetch', response.status);
             return response;
           } catch (err) {
-            const url = typeof args[0] === 'string' ? args[0] : args[0].url;
-            reportNetwork(args[1]?.method || 'GET', url, 'fetch', 'FAILED');
+            reportNetwork(method, url, 'fetch', 'FAILED');
             throw err;
           }
         };
 
-        // Interceptar XHR
         window.XMLHttpRequest.prototype.open = function(method, url) {
           this._wj_method = method;
           this._wj_url = url;
@@ -98,12 +103,8 @@
         };
 
         window.XMLHttpRequest.prototype.send = function() {
-          this.addEventListener('load', () => {
-            reportNetwork(this._wj_method, this._wj_url, 'xhr', this.status);
-          });
-          this.addEventListener('error', () => {
-            reportNetwork(this._wj_method, this._wj_url, 'xhr', 'FAILED');
-          });
+          this.addEventListener('load', () => reportNetwork(this._wj_method, this._wj_url, 'xhr', this.status));
+          this.addEventListener('error', () => reportNetwork(this._wj_method, this._wj_url, 'xhr', 'FAILED'));
           return originalXHRSend.apply(this, arguments);
         };
       })();
@@ -114,7 +115,6 @@
 
   injectNetworkInterceptor();
 
-  // Escuchar eventos de red desde la página
   window.addEventListener('wj_pro_network_event', (e) => {
     if (isRecording) {
       recordAction('network', null, { 
@@ -126,7 +126,6 @@
     }
   });
 
-  // --- CAPTURA DE INTERACCIONES UI ---
   document.addEventListener('mousedown', (e) => {
     if (!isRecording) return;
     const target = e.target.closest('button, a, input, select, [role="button"]') || e.target;
@@ -142,5 +141,5 @@
     }
   }, true);
 
-  console.log("Web Journey Pro: Network & UI Engine Inyectado.");
+  console.log("Web Journey Pro: Monitor Full-Stack Activo.");
 })();
