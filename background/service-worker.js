@@ -1,4 +1,5 @@
 
+// Core service worker for the extension.
 import * as screenshotService from '../lib/screenshot-service.js';
 import * as sessions from '../lib/sessions.js';
 import * as recordingStatus from '../lib/recording-status.js';
@@ -65,6 +66,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { success: true };
       case 'REORDER_ACTIONS':
         await sessions.reorderSessionActions(message.payload.sessionId, message.payload.actions);
+        return { success: true };
+      case 'GET_STORAGE_INFO':
+        return await screenshotService.getScreenshotStorageInfo();
+      case 'CLEAR_STORAGE':
+        await screenshotService.clearAllScreenshots();
+        updateBadge(false, false);
         return { success: true };
       case 'GET_STATUS':
         return await recordingStatus.getStatus();

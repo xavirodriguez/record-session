@@ -3,6 +3,7 @@
 /* global chrome */
 declare var chrome: any;
 
+// Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
