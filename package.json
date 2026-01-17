@@ -5,7 +5,7 @@
   "description": "Chrome Extension for recording technical user journeys with network and UI auditing.",
   "type": "module",
   "scripts": {
-    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true }); fs.mkdirSync('dist/background', { recursive: true }); fs.mkdirSync('dist/scripts', { recursive: true }); fs.mkdirSync('dist/lib', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js lib/screenshot-service.js lib/sessions.js lib/recording-status.js lib/permissions.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
+    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
