@@ -11,10 +11,8 @@
     "tabs",
     "unlimitedStorage",
     "contextMenus",
-    "sidePanel"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "sidePanel",
+    "debugger"
   ],
   "action": {
     "default_popup": "index.html",

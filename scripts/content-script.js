@@ -12,20 +12,25 @@
   let isRecording = false;
   let sessionId = null;
 
-  const syncState = () => {
-    if (typeof chrome === 'undefined' || !chrome.storage) return;
-    chrome.storage.local.get(['webjourney_status'], (res) => {
-      const status = res.webjourney_status || {};
-      isRecording = status.isRecording && !status.isPaused;
-      sessionId = status.sessionId;
+  // Escuchar actualizaciones de estado desde el service worker
+  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'STATUS_UPDATED') {
+        const status = message.payload || {};
+        isRecording = status.isRecording && !status.isPaused;
+        sessionId = status.sessionId;
+      }
     });
-  };
+  }
 
-  if (typeof chrome !== 'undefined' && chrome.storage) {
-    chrome.storage.onChanged.addListener((changes) => {
-      if (changes.webjourney_status) syncState();
+  // Solicitar estado inicial al inyectarse
+  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
+       if(status) {
+        isRecording = status.isRecording && !status.isPaused;
+        sessionId = status.sessionId;
+      }
     });
-    syncState();
   }
 
   const getElementInfo = (el) => {
@@ -63,69 +68,6 @@
     }
   };
 
-  // --- INTERCEPCIÓN DE RED PRO ---
-  const injectNetworkInterceptor = () => {
-    const script = document.createElement('script');
-    script.textContent = `
-      (function() {
-        const originalFetch = window.fetch;
-        const originalXHROpen = window.XMLHttpRequest.prototype.open;
-        const originalXHRSend = window.XMLHttpRequest.prototype.send;
-
-        const reportNetwork = (method, url, type, status) => {
-          if (!url || url.includes('google-analytics') || url.startsWith('chrome-extension://') || url.includes('/livereload')) return;
-          
-          window.dispatchEvent(new CustomEvent('wj_pro_network_event', {
-            detail: { method, url, type, status, timestamp: Date.now() }
-          }));
-        };
-
-        window.fetch = async (...args) => {
-          let method = 'GET';
-          let url = '';
-          if (typeof args[0] === 'string') { url = args[0]; }
-          else if (args[0] instanceof Request) { url = args[0].url; method = args[0].method; }
-          if (args[1]?.method) method = args[1].method;
-
-          try {
-            const response = await originalFetch(...args);
-            reportNetwork(method, url, 'fetch', response.status);
-            return response;
-          } catch (err) {
-            reportNetwork(method, url, 'fetch', 'FAILED');
-            throw err;
-          }
-        };
-
-        window.XMLHttpRequest.prototype.open = function(method, url) {
-          this._wj_method = method;
-          this._wj_url = url;
-          return originalXHROpen.apply(this, arguments);
-        };
-
-        window.XMLHttpRequest.prototype.send = function() {
-          this.addEventListener('load', () => reportNetwork(this._wj_method, this._wj_url, 'xhr', this.status));
-          this.addEventListener('error', () => reportNetwork(this._wj_method, this._wj_url, 'xhr', 'FAILED'));
-          return originalXHRSend.apply(this, arguments);
-        };
-      })();
-    `;
-    (document.head || document.documentElement).appendChild(script);
-    script.remove();
-  };
-
-  injectNetworkInterceptor();
-
-  window.addEventListener('wj_pro_network_event', (e) => {
-    if (isRecording) {
-      recordAction('network', null, { 
-        url: e.detail.url, 
-        method: e.detail.method, 
-        status: e.detail.status,
-        apiType: e.detail.type 
-      });
-    }
-  });
 
   document.addEventListener('mousedown', (e) => {
     if (!isRecording) return;

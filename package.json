@@ -5,8 +5,8 @@
   "description": "Chrome Extension for recording technical user journeys with network and UI auditing.",
   "type": "module",
   "scripts": {
-    "build": "node esbuild.config.js",
-    "dev": "node esbuild.config.js --watch"
+    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
+    "dev": "npm run build -- --watch"
   },
   "dependencies": {
     "jspdf": "^2.5.1",
