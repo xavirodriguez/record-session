@@ -140,7 +140,10 @@ const App = () => {
         const imgId = act.elementId || act.screenshotId;
         if (imgId && !screenshots[imgId]) {
           safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (data: string) => {
-            if (data) setScreenshots(prev => ({ ...prev, [imgId]: data }));
+            // 🛡️ SENTINEL: Validate data URI to prevent XSS. Only allow image data.
+            if (data && data.startsWith('data:image/')) {
+              setScreenshots(prev => ({ ...prev, [imgId]: data }));
+            }
           });
         }
       });
