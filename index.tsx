@@ -164,9 +164,9 @@ const App = () => {
           </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><Play size={16}/></button>
-          <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><History size={16}/></button>
-          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5"><Settings size={16}/></button>
+          <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="Recorder"><Play size={16}/></button>
+          <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="History"><History size={16}/></button>
+          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5" aria-label="Settings"><Settings size={16}/></button>
         </div>
       </header>
 
@@ -218,9 +218,9 @@ const App = () => {
         {view === 'detail' && selectedSession && (
           <div className="h-full flex flex-col overflow-hidden animate-in fade-in">
             <div className="p-4 border-b border-white/10 flex items-center justify-between glass">
-              <button onClick={() => setView('history')} className="p-2 text-slate-500 hover:text-white"><ArrowLeft size={18}/></button>
+              <button onClick={() => setView('history')} className="p-2 text-slate-500 hover:text-white" aria-label="Back to history"><ArrowLeft size={18}/></button>
               <h3 className="font-black text-[10px] uppercase tracking-widest truncate max-w-[150px]">{selectedSession.title}</h3>
-              <button onClick={() => { if(confirm("¿Eliminar?")) { safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData); setView('history'); }}} className="text-slate-600 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+              <button onClick={() => { if(confirm("¿Eliminar?")) { safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData); setView('history'); }}} className="text-slate-600 hover:text-red-500 p-2" aria-label="Delete session"><Trash2 size={16}/></button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
