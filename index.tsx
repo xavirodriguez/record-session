@@ -65,6 +65,25 @@ const safeChrome = {
   }
 };
 
+// Performance Optimization: Memoize list items to prevent re-renders
+// when parent state changes. Every millisecond counts! ⚡
+const SessionItem = React.memo(({ session, onClick }: { session: any, onClick: (session: any) => void }) => {
+    return (
+        <div onClick={() => onClick(session)} className="glass p-4 rounded-2xl border-white/5 hover:border-indigo-500/30 transition-all flex justify-between items-center cursor-pointer group">
+            <div className="min-w-0 flex-1">
+                <h4 className="font-bold truncate text-slate-200 group-hover:text-indigo-400 transition-colors">{session.title}</h4>
+                <div className="flex gap-2 mt-1 items-center">
+                    <span className="text-[9px] text-slate-600 font-bold uppercase">{new Date(session.createdDate).toLocaleDateString()}</span>
+                    <span className="w-1 h-1 rounded-full bg-slate-800"></span>
+                    <span className="text-[9px] text-indigo-400 font-black uppercase flex items-center gap-1"><Zap size={8}/> {session.actionCount} Eventos</span>
+                </div>
+            </div>
+            <ChevronRight size={16} className="text-slate-700 group-hover:translate-x-1 group-hover:text-indigo-400"/>
+        </div>
+    );
+});
+SessionItem.displayName = 'SessionItem'; // Good practice for debugging
+
 const App = () => {
   const [view, setView] = useState<'recorder' | 'history' | 'detail'>('recorder');
   const [status, setStatus] = useState({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
@@ -106,24 +125,19 @@ const App = () => {
     }
   }, [refreshStatus, refreshData]);
 
-  const startRecording = () => {
+  // Performance Optimization: Memoize functions with useCallback to prevent
+  // unnecessary re-renders. Every millisecond counts! ⚡
+  const startRecording = useCallback(() => {
     if (!tabInfo.isValid) return;
-    safeChrome.runtime.sendMessage({ 
-      type: 'START_RECORDING', 
-      payload: { name: `Session: ${new URL(tabInfo.url).hostname}`, url: tabInfo.url } 
+    safeChrome.runtime.sendMessage({
+      type: 'START_RECORDING',
+      payload: { name: `Session: ${new URL(tabInfo.url).hostname}`, url: tabInfo.url }
     }, (res) => {
       if (res?.success) setView('recorder');
     });
-  };
+  }, [tabInfo]);
 
-  const stopRecording = () => {
-    safeChrome.runtime.sendMessage({ type: 'STOP_RECORDING' }, (res) => {
-      refreshData();
-      if (res?.session) openDetail(res.session);
-    });
-  };
-
-  const openDetail = async (session: any) => {
+  const openDetail = useCallback((session: any) => {
     setSelectedSession(session);
     setView('detail');
     setIsLoadingActions(true);
@@ -142,7 +156,29 @@ const App = () => {
         }
       });
     });
-  };
+  }, [screenshots]);
+
+  const stopRecording = useCallback(() => {
+    safeChrome.runtime.sendMessage({ type: 'STOP_RECORDING' }, (res) => {
+      refreshData();
+      if (res?.session) openDetail(res.session);
+    });
+  }, [refreshData, openDetail]);
+
+  const handleSetViewRecorder = useCallback(() => setView('recorder'), []);
+  const handleSetViewHistory = useCallback(() => {
+      setView('history');
+      refreshData();
+  }, [refreshData]);
+  const handleOpenOptions = useCallback(() => safeChrome.runtime.openOptionsPage(), []);
+
+  const handleBackToHistory = useCallback(() => setView('history'), []);
+  const handleDeleteSession = useCallback(() => {
+      if(confirm("¿Eliminar?")) {
+          safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData);
+          setView('history');
+      }
+  }, [selectedSession, refreshData]);
 
   const getActionIcon = (type: string) => {
     switch(type) {
@@ -164,9 +200,9 @@ const App = () => {
           </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><Play size={16}/></button>
-          <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><History size={16}/></button>
-          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5"><Settings size={16}/></button>
+          <button onClick={handleSetViewRecorder} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><Play size={16}/></button>
+          <button onClick={handleSetViewHistory} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}><History size={16}/></button>
+          <button onClick={handleOpenOptions} className="p-2 text-slate-400 hover:bg-white/5"><Settings size={16}/></button>
         </div>
       </header>
 
@@ -200,17 +236,7 @@ const App = () => {
             <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2"><Database size={10}/> Sesiones (Índice de Metadatos)</h2>
             {sessions.length === 0 && <div className="py-20 text-center opacity-20 italic text-xs text-white">No hay sesiones</div>}
             {sessions.map((s: any) => (
-              <div key={s.id} onClick={() => openDetail(s)} className="glass p-4 rounded-2xl border-white/5 hover:border-indigo-500/30 transition-all flex justify-between items-center cursor-pointer group">
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-bold truncate text-slate-200 group-hover:text-indigo-400 transition-colors">{s.title}</h4>
-                  <div className="flex gap-2 mt-1 items-center">
-                    <span className="text-[9px] text-slate-600 font-bold uppercase">{new Date(s.createdDate).toLocaleDateString()}</span>
-                    <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                    <span className="text-[9px] text-indigo-400 font-black uppercase flex items-center gap-1"><Zap size={8}/> {s.actionCount} Eventos</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-slate-700 group-hover:translate-x-1 group-hover:text-indigo-400"/>
-              </div>
+              <SessionItem key={s.id} session={s} onClick={openDetail} />
             ))}
           </div>
         )}
@@ -218,9 +244,9 @@ const App = () => {
         {view === 'detail' && selectedSession && (
           <div className="h-full flex flex-col overflow-hidden animate-in fade-in">
             <div className="p-4 border-b border-white/10 flex items-center justify-between glass">
-              <button onClick={() => setView('history')} className="p-2 text-slate-500 hover:text-white"><ArrowLeft size={18}/></button>
+              <button onClick={handleBackToHistory} className="p-2 text-slate-500 hover:text-white"><ArrowLeft size={18}/></button>
               <h3 className="font-black text-[10px] uppercase tracking-widest truncate max-w-[150px]">{selectedSession.title}</h3>
-              <button onClick={() => { if(confirm("¿Eliminar?")) { safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData); setView('history'); }}} className="text-slate-600 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+              <button onClick={handleDeleteSession} className="text-slate-600 hover:text-red-500 p-2"><Trash2 size={16}/></button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
