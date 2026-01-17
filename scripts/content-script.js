@@ -1,6 +1,7 @@
 
 /**
  * Web Journey Recorder Pro - Content Script
+ * This script is injected into pages to record user interactions.
  * Blindado para captura de Red y UI
  */
 
