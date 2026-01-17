@@ -96,13 +96,15 @@ const App = () => {
     };
     checkTab();
 
-    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-      const listener = () => {
-        refreshStatus();
-        refreshData();
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      const listener = (message: any) => {
+        if (message.type === 'STATUS_UPDATED') {
+          refreshStatus();
+          refreshData();
+        }
       };
-      chrome.storage.onChanged.addListener(listener);
-      return () => chrome.storage.onChanged.removeListener(listener);
+      chrome.runtime.onMessage.addListener(listener);
+      return () => chrome.runtime.onMessage.removeListener(listener);
     }
   }, [refreshStatus, refreshData]);
 
