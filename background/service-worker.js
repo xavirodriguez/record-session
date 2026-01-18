@@ -67,12 +67,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REORDER_ACTIONS':
         await sessions.reorderSessionActions(message.payload.sessionId, message.payload.actions);
         return { success: true };
-      case 'GET_STORAGE_INFO':
-        return await screenshotService.getScreenshotStorageInfo();
-      case 'CLEAR_STORAGE':
-        await screenshotService.clearAllScreenshots();
-        updateBadge(false, false);
-        return { success: true };
       case 'GET_STATUS':
         return await recordingStatus.getStatus();
       default:
