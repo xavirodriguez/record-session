@@ -90,4 +90,55 @@
   }, true);
 
   console.log("Web Journey Pro: Monitor Full-Stack Activo.");
+
+  // Interceptación de Red (Fetch y XHR)
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    if (isRecording) {
+      const url = args[0] instanceof Request ? args[0].url : args[0];
+      const method = args[0] instanceof Request ? args[0].method : (args[1]?.method || 'GET');
+      recordNetworkAction(url, method, 'fetch');
+    }
+    return originalFetch.apply(this, args);
+  };
+
+  const originalXhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    if (isRecording) {
+      this._method = method;
+      this._url = url;
+    }
+    return originalXhrOpen.apply(this, [method, url, ...rest]);
+  };
+
+  const originalXhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function(...args) {
+    if (isRecording && this._url) {
+        recordNetworkAction(this._url, this._method, 'xhr');
+    }
+    return originalXhrSend.apply(this, args);
+  };
+
+  const recordNetworkAction = (url, method, apiType) => {
+    if (url.startsWith('chrome-extension://')) return;
+
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({
+            type: 'ACTION_RECORDED',
+            payload: {
+                id: 'net_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                type: 'network',
+                timestamp: Date.now(),
+                data: {
+                    url,
+                    method,
+                    apiType,
+                    selector: 'network',
+                    status: 'Requesting'
+                }
+            }
+        }).catch(e => {});
+    }
+  };
+
 })();
