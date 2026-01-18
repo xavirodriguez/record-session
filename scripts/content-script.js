@@ -69,10 +69,15 @@
   };
 
 
-  document.addEventListener('mousedown', (e) => {
+  document.addEventListener('click', (e) => {
     if (!isRecording) return;
     const target = e.target.closest('button, a, input, select, [role="button"]') || e.target;
     recordAction('click', target);
+  }, true);
+
+  document.addEventListener('submit', (e) => {
+    if (!isRecording) return;
+    recordAction('submit', e.target);
   }, true);
 
   document.addEventListener('change', (e) => {
