@@ -29,6 +29,9 @@
   "side_panel": {
     "default_path": "index.html"
   },
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "commands": {
     "toggle-recording": {
       "suggested_key": {
