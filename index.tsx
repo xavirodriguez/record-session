@@ -10,7 +10,7 @@ import {
   Play, Square, Trash2, MousePointer2, 
   History, ArrowLeft,
   ChevronRight, Activity,
-  Edit3, Settings, Globe, Zap, Database
+  Edit3, Settings, Globe, Zap, Database, AlertTriangle
 } from 'lucide-react';
 
 const safeChrome = {
@@ -75,6 +75,7 @@ const App = () => {
   const [screenshots, setScreenshots] = useState<Record<string, string>>({});
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
   const [isLoadingActions, setIsLoadingActions] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const refreshStatus = useCallback(() => {
     safeChrome.storage.local.get(['webjourney_status'], (res) => {
@@ -224,9 +225,29 @@ const App = () => {
         {view === 'detail' && selectedSession && (
           <div className="h-full flex flex-col overflow-hidden animate-in fade-in">
             <div className="p-4 border-b border-white/10 flex items-center justify-between glass">
-              <button onClick={() => setView('history')} className="p-2 text-slate-500 hover:text-white" aria-label="Back to history"><ArrowLeft size={18}/></button>
+              <button onClick={() => { setView('history'); setConfirmingDelete(null); }} className="p-2 text-slate-500 hover:text-white" aria-label="Back to history"><ArrowLeft size={18}/></button>
               <h3 className="font-black text-[10px] uppercase tracking-widest truncate max-w-[150px]">{selectedSession.title}</h3>
-              <button onClick={() => { if(confirm("¿Eliminar?")) { safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData); setView('history'); }}} className="text-slate-600 hover:text-red-500 p-2" aria-label="Delete session"><Trash2 size={16}/></button>
+              <button
+                onClick={() => {
+                  if (confirmingDelete === selectedSession.id) {
+                    safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData);
+                    setView('history');
+                    setConfirmingDelete(null);
+                  } else {
+                    setConfirmingDelete(selectedSession.id);
+                  }
+                }}
+                onMouseLeave={() => setConfirmingDelete(null)}
+                onBlur={() => setConfirmingDelete(null)}
+                className={`p-2 rounded-lg transition-all ${
+                  confirmingDelete === selectedSession.id
+                    ? 'bg-red-500/20 text-red-400'
+                    : 'text-slate-600 hover:text-red-500'
+                }`}
+                aria-label={confirmingDelete === selectedSession.id ? 'Confirm delete' : 'Delete session'}
+              >
+                {confirmingDelete === selectedSession.id ? <AlertTriangle size={16}/> : <Trash2 size={16}/>}
+              </button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
