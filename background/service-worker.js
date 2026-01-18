@@ -118,7 +118,6 @@ async function handleStart(payload) {
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) {
-      await attachDebugger(tab.id);
       injectScripts(tab.id);
     }
     
@@ -161,9 +160,6 @@ async function handleStop() {
   const metadataList = await sessions.getSessionsMetadata();
   const sessionMeta = metadataList.find(s => s.id === status.sessionId);
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) await detachDebugger(tab.id);
-
   await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
   
@@ -178,78 +174,12 @@ async function injectScripts(tabId) {
   } catch (e) {}
 }
 
-const DEBUGGER_VERSION = "1.3";
-let attachedTabs = new Set();
-
-async function attachDebugger(tabId) {
-  if (attachedTabs.has(tabId)) return;
-  try {
-    await chrome.debugger.attach({ tabId }, DEBUGGER_VERSION);
-    await chrome.debugger.sendCommand({ tabId }, "Network.enable");
-    attachedTabs.add(tabId);
-  } catch (e) {
-    console.warn(`No se pudo adjuntar el depurador a la pestaña ${tabId}:`, e.message);
-  }
-}
-
-async function detachDebugger(tabId) {
-  if (!attachedTabs.has(tabId)) return;
-  try {
-    await chrome.debugger.detach({ tabId });
-    attachedTabs.delete(tabId);
-  } catch (e) {
-    console.warn(`No se pudo separar el depurador de la pestaña ${tabId}:`, e.message);
-  }
-}
-
-function handleDetach(source, reason) {
-  if (source.tabId) attachedTabs.delete(source.tabId);
-}
-
-async function handleEvent(source, method, params) {
-    if (method === 'Network.requestWillBeSent') {
-        const status = await recordingStatus.getStatus();
-        if (!status.isRecording || status.isPaused) return;
-
-        const { requestId, request } = params;
-        const { url, method: httpMethod } = request;
-
-        // Filtrar URLs irrelevantes
-        if (url.startsWith('chrome-extension://') || url.startsWith('data:')) return;
-
-        const action = {
-            id: 'net_' + requestId,
-            type: 'network',
-            timestamp: Date.now(),
-            data: {
-                url,
-                method: httpMethod,
-                status: 'Requesting',
-                apiType: 'fetch/xhr',
-                selector: 'network'
-            }
-        };
-
-        // Utilizar la cola de acciones existente para almacenar la acción de red
-        actionQueue.push({ action, tab: { id: source.tabId } });
-        processQueue();
-    }
-}
-
-chrome.debugger.onEvent.addListener(handleEvent);
-chrome.debugger.onDetach.addListener(handleDetach);
-
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url?.startsWith('http')) {
     recordingStatus.getStatus().then(status => {
       if (status.isRecording) {
         injectScripts(tabId);
-        attachDebugger(tabId);
       }
     });
   }
-});
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  detachDebugger(tabId);
 });

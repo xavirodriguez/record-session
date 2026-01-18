@@ -69,10 +69,57 @@
   };
 
 
-  document.addEventListener('mousedown', (e) => {
+  const recordNetworkAction = (api, method, url) => {
+    // Filtrar URLs irrelevantes
+    if (url.startsWith('chrome-extension://') || url.startsWith('data:')) return;
+
+    recordAction('network', window, {
+      url,
+      method: method.toUpperCase(),
+      status: 'Requesting',
+      apiType: api,
+      selector: 'network'
+    });
+  };
+
+  // Intercept Fetch API
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    if (isRecording) {
+      let url, method = 'GET';
+      if (args[0] instanceof Request) {
+        url = args[0].url;
+        method = args[0].method;
+      } else {
+        url = args[0];
+        if (args[1] && args[1].method) {
+          method = args[1].method;
+        }
+      }
+      recordNetworkAction('fetch', method, url);
+    }
+    return originalFetch.apply(this, args);
+  };
+
+  // Intercept XMLHttpRequest
+  const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+  window.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    if (isRecording) {
+      // Record the network action immediately, similar to fetch
+      recordNetworkAction('xhr', method, url);
+    }
+    return originalXhrOpen.apply(this, [method, url, ...rest]);
+  };
+
+  document.addEventListener('click', (e) => {
     if (!isRecording) return;
     const target = e.target.closest('button, a, input, select, [role="button"]') || e.target;
     recordAction('click', target);
+  }, true);
+
+  document.addEventListener('submit', (e) => {
+      if (!isRecording) return;
+      recordAction('submit', e.target);
   }, true);
 
   document.addEventListener('change', (e) => {
