@@ -77,9 +77,17 @@ const App = () => {
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
+  // Clean up object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      Object.values(screenshots).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [screenshots]);
+
   const refreshStatus = useCallback(() => {
-    safeChrome.storage.local.get(['webjourney_status'], (res) => {
-      if (res.webjourney_status) setStatus(res.webjourney_status);
+    // 🛡️ REFACTOR: Get status from the service worker as the single source of truth.
+    safeChrome.runtime.sendMessage({ type: 'GET_STATUS' }, (currentStatus) => {
+      if (currentStatus) setStatus(currentStatus);
     });
   }, []);
 
@@ -140,10 +148,16 @@ const App = () => {
       actions?.forEach((act: any) => {
         const imgId = act.elementId || act.screenshotId;
         if (imgId && !screenshots[imgId]) {
-          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (data: string) => {
-            // 🛡️ SENTINEL: Validate data URI to prevent XSS. Only allow image data.
-            if (data && data.startsWith('data:image/')) {
-              setScreenshots(prev => ({ ...prev, [imgId]: data }));
+          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (dataUrl: string) => {
+            if (dataUrl && dataUrl.startsWith('data:image/')) {
+              // 🛡️ SECURITY FIX: Convert data URI to blob URL to mitigate XSS risks.
+              fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                  const objectURL = URL.createObjectURL(blob);
+                  setScreenshots(prev => ({ ...prev, [imgId]: objectURL }));
+                })
+                .catch(err => console.error("Error creating blob URL:", err));
             }
           });
         }

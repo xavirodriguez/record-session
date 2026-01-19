@@ -105,18 +105,10 @@
   const originalXhrOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     if (isRecording) {
-      this._method = method;
-      this._url = url;
+      // ✅ TIMING FIX: Record network event on `open` to capture initiation time accurately.
+      recordNetworkAction(url, method, 'xhr');
     }
     return originalXhrOpen.apply(this, [method, url, ...rest]);
-  };
-
-  const originalXhrSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(...args) {
-    if (isRecording && this._url) {
-        recordNetworkAction(this._url, this._method, 'xhr');
-    }
-    return originalXhrSend.apply(this, args);
   };
 
   const recordNetworkAction = (url, method, apiType) => {

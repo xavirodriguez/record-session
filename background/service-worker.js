@@ -6,6 +6,9 @@ import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema } from '../lib/domain-schemas.js';
 
+// ⚠️ WARNING: This in-memory queue can lead to data loss if the service worker
+// is terminated before the queue is processed. For a more robust solution,
+// consider implementing a persistent queue using IndexedDB.
 const actionQueue = [];
 let isProcessingQueue = false;
 
