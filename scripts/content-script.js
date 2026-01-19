@@ -12,6 +12,11 @@
   let isRecording = false;
   let sessionId = null;
 
+  const sanitizeHTML = (str) => {
+    if (!str) return '';
+    return str.replace(/<\/?[^>]+(>|$)/g, "");
+  };
+
   // Escuchar actualizaciones de estado desde el service worker
   if (typeof chrome !== 'undefined' && chrome.runtime) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -40,7 +45,7 @@
       return {
         selector: el.id ? `#${el.id}` : el.tagName?.toLowerCase() || 'unknown',
         tagName: el.tagName || 'UNKNOWN',
-        text: (el.innerText || el.value || "").slice(0, 50).trim(),
+        text: sanitizeHTML((el.innerText || el.value || "")).slice(0, 50).trim(),
         viewportRect: {
           left: Math.round(rect.left),
           top: Math.round(rect.top),
