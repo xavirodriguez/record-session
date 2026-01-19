@@ -72,7 +72,7 @@ const App = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [selectedActions, setSelectedActions] = useState<any[]>([]);
-  const [screenshots, setScreenshots] = useState<Record<string, string>>({});
+  const [objectUrls, setObjectUrls] = useState<Record<string, string>>({});
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
@@ -110,6 +110,19 @@ const App = () => {
     }
   }, [refreshStatus, refreshData]);
 
+  useEffect(() => {
+    // Devuelve una función de limpieza que se ejecutará al desmontar.
+    return () => {
+      // Revocar todos los object URLs para prevenir fugas de memoria.
+      // Usamos el callback de `setObjectUrls` para acceder al estado más reciente
+      // sin necesidad de añadir dependencias al hook.
+      setObjectUrls(currentUrls => {
+        Object.values(currentUrls).forEach(URL.revokeObjectURL);
+        return {}; // Limpiar el estado al desmontar.
+      });
+    };
+  }, []); // El array vacío asegura que esto solo se ejecute al montar/desmontar.
+
   const startRecording = () => {
     if (!tabInfo.isValid) return;
     safeChrome.runtime.sendMessage({ 
@@ -139,11 +152,16 @@ const App = () => {
       
       actions?.forEach((act: any) => {
         const imgId = act.elementId || act.screenshotId;
-        if (imgId && !screenshots[imgId]) {
-          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (data: string) => {
-            // 🛡️ SENTINEL: Validate data URI to prevent XSS. Only allow image data.
-            if (data && data.startsWith('data:image/')) {
-              setScreenshots(prev => ({ ...prev, [imgId]: data }));
+        if (imgId && !objectUrls[imgId]) {
+          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (dataUri: string) => {
+            if (dataUri && dataUri.startsWith('data:image/')) {
+              fetch(dataUri)
+                .then(res => res.blob())
+                .then(blob => {
+                  const objectUrl = URL.createObjectURL(blob);
+                  setObjectUrls(prev => ({ ...prev, [imgId]: objectUrl }));
+                })
+                .catch(err => console.error("Error creating object URL:", err));
             }
           });
         }
@@ -270,9 +288,9 @@ const App = () => {
                       ) : (
                         <>
                           <p className="text-slate-200 text-xs font-bold leading-tight mb-1">{act.data.text || act.data.tagName}</p>
-                          {(act.elementId || act.screenshotId) && screenshots[act.elementId || act.screenshotId] && (
+                          {(act.elementId || act.screenshotId) && objectUrls[act.elementId || act.screenshotId] && (
                             <div className="mt-2 rounded-lg border border-white/5 overflow-hidden bg-black shadow-xl">
-                              <img src={screenshots[act.elementId || act.screenshotId]} className="w-full max-h-32 object-contain" alt="Step" />
+                              <img src={objectUrls[act.elementId || act.screenshotId]} className="w-full max-h-32 object-contain" alt="Step" />
                             </div>
                           )}
                         </>
