@@ -110,6 +110,22 @@ const App = () => {
     }
   }, [refreshStatus, refreshData]);
 
+  // Effect to manage blob URL lifecycle for screenshots
+  useEffect(() => {
+    // When leaving detail view, revoke URLs to prevent memory leaks
+    if (view !== 'detail' && Object.keys(screenshots).length > 0) {
+      Object.values(screenshots).forEach(URL.revokeObjectURL);
+      setScreenshots({});
+    }
+
+    // Final cleanup on component unmount
+    return () => {
+      if (Object.keys(screenshots).length > 0) {
+        Object.values(screenshots).forEach(URL.revokeObjectURL);
+      }
+    };
+  }, [view]);
+
   const startRecording = () => {
     if (!tabInfo.isValid) return;
     safeChrome.runtime.sendMessage({ 
@@ -141,9 +157,19 @@ const App = () => {
         const imgId = act.elementId || act.screenshotId;
         if (imgId && !screenshots[imgId]) {
           safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (data: string) => {
-            // 🛡️ SENTINEL: Validate data URI to prevent XSS. Only allow image data.
+            // 🛡️ SECURITY FIX: Convert data URI to blob URL to mitigate XSS risks.
             if (data && data.startsWith('data:image/')) {
-              setScreenshots(prev => ({ ...prev, [imgId]: data }));
+              try {
+                fetch(data)
+                  .then(res => res.blob())
+                  .then(blob => {
+                    const objectURL = URL.createObjectURL(blob);
+                    setScreenshots(prev => ({ ...prev, [imgId]: objectURL }));
+                  })
+                  .catch(e => console.error("Error creating blob from data URI:", e));
+              } catch(e) {
+                console.error("Error fetching data URI:", e);
+              }
             }
           });
         }
