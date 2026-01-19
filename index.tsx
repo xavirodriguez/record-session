@@ -110,6 +110,11 @@ const App = () => {
     }
   }, [refreshStatus, refreshData]);
 
+  useEffect(() => {
+    // Reset confirmation state when changing views to prevent accidental deletion
+    setConfirmingDelete(null);
+  }, [view]);
+
   const startRecording = () => {
     if (!tabInfo.isValid) return;
     safeChrome.runtime.sendMessage({ 
