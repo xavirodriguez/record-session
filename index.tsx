@@ -150,22 +150,31 @@ const App = () => {
       setSelectedActions(actions || []);
       setIsLoadingActions(false);
       
-      actions?.forEach((act: any) => {
-        const imgId = act.elementId || act.screenshotId;
-        if (imgId && !objectUrls[imgId]) {
-          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (dataUri: string) => {
-            if (dataUri && dataUri.startsWith('data:image/')) {
-              fetch(dataUri)
-                .then(res => res.blob())
-                .then(blob => {
-                  const objectUrl = URL.createObjectURL(blob);
-                  setObjectUrls(prev => ({ ...prev, [imgId]: objectUrl }));
-                })
-                .catch(err => console.error("Error creating object URL:", err));
-            }
+      // ⚡ Bolt: N+1 issue fixed by batching screenshot requests.
+      // Instead of fetching screenshots one-by-one in a loop, we now fetch them all in a single batch.
+      // This reduces network overhead and IndexedDB transactions, significantly speeding up detail view rendering.
+      const screenshotIds = actions
+        ?.map((act: any) => act.elementId || act.screenshotId)
+        .filter((id: string | null) => id && !objectUrls[id]);
+
+      if (screenshotIds && screenshotIds.length > 0) {
+        safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
+          if (!dataUriMap) return;
+
+          const urlsToAdd: Record<string, string> = {};
+          const promises = Object.entries(dataUriMap).map(([id, dataUri]) =>
+            fetch(dataUri)
+              .then(res => res.blob())
+              .then(blob => {
+                urlsToAdd[id] = URL.createObjectURL(blob);
+              })
+          );
+
+          Promise.all(promises).then(() => {
+            setObjectUrls(prevUrls => ({ ...prevUrls, ...urlsToAdd }));
           });
-        }
-      });
+        });
+      }
     });
   };
 

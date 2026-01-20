@@ -47,6 +47,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return await sessions.getSessionActions(message.payload);
       case 'GET_SCREENSHOT':
         return await screenshotService.getScreenshot(message.payload);
+      case 'GET_SCREENSHOTS_BATCH':
+        return await screenshotService.getScreenshotsBatch(message.payload);
       case 'GET_STORAGE_INFO':
         return await screenshotService.getScreenshotStorageInfo();
       case 'CLEAR_STORAGE':
