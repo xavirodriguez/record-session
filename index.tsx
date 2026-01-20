@@ -77,6 +77,13 @@ const App = () => {
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
+  const revokeAllObjectUrls = useCallback(() => {
+    setObjectUrls(currentUrls => {
+      Object.values(currentUrls).forEach(URL.revokeObjectURL);
+      return {};
+    });
+  }, []);
+
   const refreshStatus = useCallback(() => {
     safeChrome.storage.local.get(['webjourney_status'], (res) => {
       if (res.webjourney_status) setStatus(res.webjourney_status);
@@ -111,17 +118,18 @@ const App = () => {
   }, [refreshStatus, refreshData]);
 
   useEffect(() => {
-    // Devuelve una función de limpieza que se ejecutará al desmontar.
+    // Efecto de limpieza para revocar Object URLs cuando no se está en la vista de detalle.
+    if (view !== 'detail') {
+      revokeAllObjectUrls();
+    }
+  }, [view, revokeAllObjectUrls]);
+
+  useEffect(() => {
+    // Devuelve una función de limpieza que se ejecutará al desmontar el componente.
     return () => {
-      // Revocar todos los object URLs para prevenir fugas de memoria.
-      // Usamos el callback de `setObjectUrls` para acceder al estado más reciente
-      // sin necesidad de añadir dependencias al hook.
-      setObjectUrls(currentUrls => {
-        Object.values(currentUrls).forEach(URL.revokeObjectURL);
-        return {}; // Limpiar el estado al desmontar.
-      });
+      revokeAllObjectUrls();
     };
-  }, []); // El array vacío asegura que esto solo se ejecute al montar/desmontar.
+  }, [revokeAllObjectUrls]);
 
   const startRecording = () => {
     if (!tabInfo.isValid) return;
@@ -141,6 +149,7 @@ const App = () => {
   };
 
   const openDetail = async (session: any) => {
+    revokeAllObjectUrls();
     setSelectedSession(session);
     setView('detail');
     setIsLoadingActions(true);
