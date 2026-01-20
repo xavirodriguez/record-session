@@ -1,7 +1,6 @@
 
-// Fix: Added global declaration for chrome to resolve TS errors
-/* global chrome */
-declare var chrome: any;
+// The global chrome declaration has been removed to leverage the type
+// safety provided by @types/chrome, ensuring proper usage of Chrome APIs.
 
 // Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,14 +12,22 @@ import {
   Edit3, Settings, Globe, Zap, Database, AlertTriangle
 } from 'lucide-react';
 
+// Added type definition for session metadata to improve type safety.
+type SessionMetadata = {
+  id: string;
+  title: string;
+  createdDate: string;
+  actionCount: number;
+};
+
 const safeChrome = {
   storage: {
     local: {
-      get: (keys: string[], cb: (res: any) => void) => {
+      get: (keys: string[], cb: (res: { [key: string]: any }) => void) => {
         if (typeof chrome !== 'undefined' && chrome.storage?.local) {
           chrome.storage.local.get(keys, cb);
         } else {
-          const res: any = {};
+          const res: { [key: string]: any } = {};
           keys.forEach(k => {
             const val = localStorage.getItem(k);
             res[k] = val ? JSON.parse(val) : undefined;
@@ -28,7 +35,7 @@ const safeChrome = {
           cb(res);
         }
       },
-      set: (data: any, cb?: () => void) => {
+      set: (data: { [key: string]: any }, cb?: () => void) => {
         if (typeof chrome !== 'undefined' && chrome.storage?.local) {
           chrome.storage.local.set(data, cb);
         } else {
@@ -54,7 +61,7 @@ const safeChrome = {
     }
   },
   tabs: {
-    query: (query: any) => {
+    query: (query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> => {
       return new Promise((resolve) => {
         if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
           chrome.tabs.query(query, resolve);
@@ -68,8 +75,8 @@ const safeChrome = {
 
 const App = () => {
   const [view, setView] = useState<'recorder' | 'history' | 'detail'>('recorder');
-  const [status, setStatus] = useState({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
-  const [sessions, setSessions] = useState([]);
+  const [status, setStatus] = useState({ isRecording: false, isPaused: false, sessionId: null as string | null, startTime: null as number | null });
+  const [sessions, setSessions] = useState<SessionMetadata[]>([]);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [selectedActions, setSelectedActions] = useState<any[]>([]);
   const [objectUrls, setObjectUrls] = useState<Record<string, string>>({});
@@ -78,8 +85,8 @@ const App = () => {
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const refreshStatus = useCallback(() => {
-    safeChrome.storage.local.get(['webjourney_status'], (res) => {
-      if (res.webjourney_status) setStatus(res.webjourney_status);
+    safeChrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
+      if (status) setStatus(status);
     });
   }, []);
 
@@ -92,14 +99,14 @@ const App = () => {
     refreshData();
     
     const checkTab = async () => {
-      const tabs: any = await safeChrome.tabs.query({ active: true, currentWindow: true });
+      const tabs = await safeChrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
       setTabInfo({ isValid: !!(tab && tab.url?.startsWith('http')), url: tab?.url || '' });
     };
     checkTab();
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      const listener = (message: any) => {
+      const listener = (message: { type: string; }) => {
         if (message.type === 'STATUS_UPDATED') {
           refreshStatus();
           refreshData();

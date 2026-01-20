@@ -6,8 +6,8 @@ import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema } from '../lib/domain-schemas.js';
 
-const actionQueue = [];
-let isProcessingQueue = false;
+// The in-memory actionQueue and isProcessingQueue variables have been removed
+// to prevent data loss when the service worker is terminated by Chrome.
 
 chrome.runtime.onInstalled.addListener(() => {
   recordingStatus.updateStatus({ 
@@ -36,8 +36,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'ACTION_RECORDED':
         const validation = ActionSchema.safeParse(message.payload);
         if (!validation.success) return { success: false, error: "Invalid action schema" };
-        actionQueue.push({ action: validation.data, tab: sender.tab });
-        processQueue();
+
+        // Process the action in the background without awaiting to ensure a timely
+        // response to the content script. This prevents the message channel from closing prematurely.
+        handleAction(validation.data, sender.tab).catch(console.error);
+
         return { success: true };
       case 'GET_SESSIONS':
         // Ahora devuelve solo Metadatos (O(N) ligero)
@@ -78,19 +81,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; 
 });
 
-async function processQueue() {
-  if (isProcessingQueue || actionQueue.length === 0) return;
-  isProcessingQueue = true;
-  while (actionQueue.length > 0) {
-    const { action, tab } = actionQueue.shift();
-    try {
-      await handleAction(action, tab);
-    } catch (e) {
-      console.error("Error procesando acción:", e);
-    }
-  }
-  isProcessingQueue = false;
-}
+// The processQueue function has been removed as it's no longer needed after
+// eliminating the in-memory queue.
 
 async function updateBadge(isRecording, isPaused) {
   if (!isRecording) {
