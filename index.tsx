@@ -149,23 +149,33 @@ const App = () => {
     safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
       setSelectedActions(actions || []);
       setIsLoadingActions(false);
-      
-      actions?.forEach((act: any) => {
-        const imgId = act.elementId || act.screenshotId;
-        if (imgId && !objectUrls[imgId]) {
-          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (dataUri: string) => {
+
+      const screenshotIds = actions
+        ?.map((act: any) => act.elementId || act.screenshotId)
+        .filter((id): id is string => !!id);
+
+      if (screenshotIds && screenshotIds.length > 0) {
+        safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUris: { [key: string]: string }) => {
+          if (!dataUris) return;
+
+          const newObjectUrls: { [key: string]: string } = {};
+          const promises = Object.entries(dataUris).map(([id, dataUri]) => {
             if (dataUri && dataUri.startsWith('data:image/')) {
-              fetch(dataUri)
+              return fetch(dataUri)
                 .then(res => res.blob())
                 .then(blob => {
-                  const objectUrl = URL.createObjectURL(blob);
-                  setObjectUrls(prev => ({ ...prev, [imgId]: objectUrl }));
+                  newObjectUrls[id] = URL.createObjectURL(blob);
                 })
                 .catch(err => console.error("Error creating object URL:", err));
             }
+            return Promise.resolve();
           });
-        }
-      });
+
+          Promise.all(promises).then(() => {
+            setObjectUrls(prev => ({ ...prev, ...newObjectUrls }));
+          });
+        });
+      }
     });
   };
 
