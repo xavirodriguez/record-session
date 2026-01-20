@@ -77,9 +77,9 @@ const App = () => {
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
-  const refreshStatus = useCallback(() => {
-    safeChrome.storage.local.get(['webjourney_status'], (res) => {
-      if (res.webjourney_status) setStatus(res.webjourney_status);
+  const fetchStatus = useCallback(() => {
+    safeChrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
+      if (status) setStatus(status);
     });
   }, []);
 
@@ -88,7 +88,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    refreshStatus();
+    fetchStatus();
     refreshData();
     
     const checkTab = async () => {
@@ -101,14 +101,14 @@ const App = () => {
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       const listener = (message: any) => {
         if (message.type === 'STATUS_UPDATED') {
-          refreshStatus();
+          fetchStatus();
           refreshData();
         }
       };
       chrome.runtime.onMessage.addListener(listener);
       return () => chrome.runtime.onMessage.removeListener(listener);
     }
-  }, [refreshStatus, refreshData]);
+  }, [fetchStatus, refreshData]);
 
   useEffect(() => {
     // Devuelve una función de limpieza que se ejecutará al desmontar.
