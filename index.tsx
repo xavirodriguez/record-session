@@ -149,23 +149,36 @@ const App = () => {
     safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
       setSelectedActions(actions || []);
       setIsLoadingActions(false);
-      
-      actions?.forEach((act: any) => {
-        const imgId = act.elementId || act.screenshotId;
-        if (imgId && !objectUrls[imgId]) {
-          safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOT', payload: imgId }, (dataUri: string) => {
+
+      if (!actions || actions.length === 0) return;
+
+      const screenshotIds = actions
+        .map((act: any) => act.elementId || act.screenshotId)
+        .filter((id: string | null) => id && !objectUrls[id]);
+
+      if (screenshotIds.length > 0) {
+        safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
+          if (!dataUriMap) return;
+
+          const newObjectUrls = { ...objectUrls };
+          const promises = Object.entries(dataUriMap).map(([id, dataUri]) => {
             if (dataUri && dataUri.startsWith('data:image/')) {
-              fetch(dataUri)
+              return fetch(dataUri)
                 .then(res => res.blob())
                 .then(blob => {
                   const objectUrl = URL.createObjectURL(blob);
-                  setObjectUrls(prev => ({ ...prev, [imgId]: objectUrl }));
+                  newObjectUrls[id] = objectUrl;
                 })
                 .catch(err => console.error("Error creating object URL:", err));
             }
+            return Promise.resolve();
           });
-        }
-      });
+
+          Promise.all(promises).then(() => {
+            setObjectUrls(newObjectUrls);
+          });
+        });
+      }
     });
   };
 
