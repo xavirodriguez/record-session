@@ -182,14 +182,14 @@ const App = () => {
     });
   };
 
-  const getActionIcon = (type: string) => {
+  const getActionIcon = useCallback((type: string) => {
     switch(type) {
       case 'click': return <MousePointer2 size={12} />;
       case 'input': return <Edit3 size={12} />;
       case 'network': return <Globe size={12} className="text-indigo-400" />;
       default: return <Zap size={12} />;
     }
-  };
+  }, []);
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 text-sm overflow-hidden antialiased font-sans">
