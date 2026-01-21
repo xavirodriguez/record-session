@@ -80,6 +80,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { success: true };
       case 'GET_STATUS':
         return await recordingStatus.getStatus();
+      case 'GET_CONFIG':
+        return await getConfig();
+      case 'UPDATE_CONFIG':
+        await setConfig(message.payload);
+        return { success: true };
       default:
         return null;
     }
@@ -174,3 +179,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     });
   }
 });
+
+// Funciones de configuración centralizadas
+async function getConfig() {
+  const result = await chrome.storage.local.get(['webjourney_config']);
+  return result.webjourney_config || { quality: 80, autoOpen: false };
+}
+
+async function setConfig(config) {
+  await chrome.storage.local.set({ webjourney_config: config });
+}
