@@ -1,7 +1,4 @@
 
-// Fix: Added global declaration for chrome to resolve TS errors
-/* global chrome */
-declare var chrome: any;
 
 // Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
@@ -141,6 +138,14 @@ const App = () => {
   };
 
   const openDetail = async (session: any) => {
+    // REVOCAR URLs ANTERIORES PARA PREVENIR FUGAS DE MEMORIA AL CAMBIAR DE VISTA
+    // Usamos el callback de `setObjectUrls` para asegurar que tenemos el estado más reciente
+    // y evitar añadir `objectUrls` como dependencia, lo que causaría ciclos.
+    setObjectUrls(currentUrls => {
+      Object.values(currentUrls).forEach(URL.revokeObjectURL);
+      return {}; // Retornar un objeto vacío para limpiar el estado.
+    });
+
     setSelectedSession(session);
     setView('detail');
     setIsLoadingActions(true);
