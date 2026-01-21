@@ -6,8 +6,8 @@ import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema } from '../lib/domain-schemas.js';
 
-const actionQueue = [];
-let isProcessingQueue = false;
+// Promise chain para serializar el procesamiento de acciones y prevenir race conditions.
+let actionProcessingPromise = Promise.resolve();
 
 chrome.runtime.onInstalled.addListener(() => {
   recordingStatus.updateStatus({ 
@@ -35,9 +35,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { success: true };
       case 'ACTION_RECORDED':
         const validation = ActionSchema.safeParse(message.payload);
-        if (!validation.success) return { success: false, error: "Invalid action schema" };
-        actionQueue.push({ action: validation.data, tab: sender.tab });
-        processQueue();
+        if (!validation.success) {
+          console.error("Invalid action schema:", validation.error);
+          return { success: false, error: "Invalid action schema" };
+        }
+
+        // Encadenamos la nueva acción a la promesa existente para asegurar ejecución secuencial.
+        actionProcessingPromise = actionProcessingPromise
+          .then(() => handleAction(validation.data, sender.tab))
+          .catch(e => {
+            console.error("Error handling action:", e);
+          });
+
         return { success: true };
       case 'GET_SESSIONS':
         // Ahora devuelve solo Metadatos (O(N) ligero)
@@ -79,20 +88,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handle().then(sendResponse);
   return true; 
 });
-
-async function processQueue() {
-  if (isProcessingQueue || actionQueue.length === 0) return;
-  isProcessingQueue = true;
-  while (actionQueue.length > 0) {
-    const { action, tab } = actionQueue.shift();
-    try {
-      await handleAction(action, tab);
-    } catch (e) {
-      console.error("Error procesando acción:", e);
-    }
-  }
-  isProcessingQueue = false;
-}
 
 async function updateBadge(isRecording, isPaused) {
   if (!isRecording) {
