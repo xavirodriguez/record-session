@@ -303,7 +303,11 @@ const App = () => {
                           <p className="text-slate-200 text-xs font-bold leading-tight mb-1">{act.data.text || act.data.tagName}</p>
                           {(act.elementId || act.screenshotId) && objectUrls[act.elementId || act.screenshotId] && (
                             <div className="mt-2 rounded-lg border border-white/5 overflow-hidden bg-black shadow-xl">
-                              <img src={objectUrls[act.elementId || act.screenshotId]} className="w-full max-h-32 object-contain" alt="Step" />
+                              <img
+                                src={objectUrls[act.elementId || act.screenshotId]}
+                                className="w-full max-h-32 object-contain"
+                                alt={`Screenshot of a ${act.type} action on a ${act.data.tagName} element with text "${act.data.text}"`}
+                              />
                             </div>
                           )}
                         </>
