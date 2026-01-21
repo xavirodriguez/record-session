@@ -1,21 +1,42 @@
 
 // Core service worker for the extension.
+// Core service worker for the extension.
 import * as screenshotService from '../lib/screenshot-service.js';
 import * as sessions from '../lib/sessions.js';
 import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema } from '../lib/domain-schemas.js';
 
+const CONFIG_KEY = 'webjourney_config';
 const actionQueue = [];
 let isProcessingQueue = false;
 
-chrome.runtime.onInstalled.addListener(() => {
-  recordingStatus.updateStatus({ 
+/**
+ * Difunde el estado actual a todos los componentes de la extensión.
+ */
+async function broadcastStatusUpdate() {
+  const status = await recordingStatus.getStatus();
+
+  // Actualizar UI (popup/sidepanel)
+  chrome.runtime.sendMessage({ type: 'STATUS_UPDATED', payload: status }).catch(() => {});
+
+  // Actualizar todos los content scripts en pestañas activas
+  const tabs = await chrome.tabs.query({ status: 'complete' });
+  for (const tab of tabs) {
+    if (tab.id && tab.url?.startsWith('http')) {
+      chrome.tabs.sendMessage(tab.id, { type: 'STATUS_UPDATED', payload: status }).catch(() => {});
+    }
+  }
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
+  await recordingStatus.updateStatus({
     isRecording: false, 
     isPaused: false, 
     sessionId: null, 
     startTime: null 
   });
+  await broadcastStatusUpdate();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -27,10 +48,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return await handleStop();
       case 'PAUSE_RECORDING':
         await recordingStatus.updateStatus({ isPaused: true });
+        await broadcastStatusUpdate();
         updateBadge(true, true);
         return { success: true };
       case 'RESUME_RECORDING':
         await recordingStatus.updateStatus({ isPaused: false });
+        await broadcastStatusUpdate();
         updateBadge(true, false);
         return { success: true };
       case 'ACTION_RECORDED':
@@ -71,6 +94,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { success: true };
       case 'GET_STATUS':
         return await recordingStatus.getStatus();
+      case 'GET_CONFIG':
+        const result = await chrome.storage.local.get(CONFIG_KEY);
+        return result[CONFIG_KEY] || {};
+      case 'SAVE_CONFIG':
+        await chrome.storage.local.set({ [CONFIG_KEY]: message.payload });
+        return { success: true };
       default:
         return null;
     }
@@ -111,6 +140,7 @@ async function handleStart(payload) {
     const session = await sessions.createRecordingSession(payload.name, payload.url);
     await recordingStatus.updateStatus({ isRecording: true, isPaused: false, sessionId: session.id, startTime: Date.now() });
     updateBadge(true, false);
+    await broadcastStatusUpdate();
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) {
@@ -158,6 +188,7 @@ async function handleStop() {
 
   await recordingStatus.updateStatus({ isRecording: false, isPaused: false, sessionId: null, startTime: null });
   updateBadge(false, false);
+  await broadcastStatusUpdate();
   
   // Obtenemos las acciones para el retorno completo al cerrar
   const actions = await sessions.getSessionActions(status.sessionId);

@@ -17,26 +17,30 @@
     return str.replace(/<\/?[^>]+(>|$)/g, "");
   };
 
-  // Escuchar actualizaciones de estado desde el service worker
-  if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.type === 'STATUS_UPDATED') {
-        const status = message.payload || {};
-        isRecording = status.isRecording && !status.isPaused;
-        sessionId = status.sessionId;
-      }
-    });
-  }
+  const listenForStatusUpdates = () => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.onMessage) return;
 
-  // Solicitar estado inicial al inyectarse
-  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'STATUS_UPDATED' && message.payload) {
+        isRecording = message.payload.isRecording && !message.payload.isPaused;
+        sessionId = message.payload.sessionId;
+      }
+    });
+  };
+
+  const requestInitialStatus = () => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
+
     chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
-       if(status) {
+      if (status) {
         isRecording = status.isRecording && !status.isPaused;
         sessionId = status.sessionId;
       }
     });
-  }
+  };
+
+  listenForStatusUpdates();
+  requestInitialStatus();
 
   const getElementInfo = (el) => {
     if (!el) return null;

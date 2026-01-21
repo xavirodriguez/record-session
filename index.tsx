@@ -1,8 +1,4 @@
 
-// Fix: Added global declaration for chrome to resolve TS errors
-/* global chrome */
-declare var chrome: any;
-
 // Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -12,59 +8,6 @@ import {
   ChevronRight, Activity,
   Edit3, Settings, Globe, Zap, Database, AlertTriangle
 } from 'lucide-react';
-
-const safeChrome = {
-  storage: {
-    local: {
-      get: (keys: string[], cb: (res: any) => void) => {
-        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          chrome.storage.local.get(keys, cb);
-        } else {
-          const res: any = {};
-          keys.forEach(k => {
-            const val = localStorage.getItem(k);
-            res[k] = val ? JSON.parse(val) : undefined;
-          });
-          cb(res);
-        }
-      },
-      set: (data: any, cb?: () => void) => {
-        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          chrome.storage.local.set(data, cb);
-        } else {
-          Object.keys(data).forEach(k => localStorage.setItem(k, JSON.stringify(data[k])));
-          if (cb) cb();
-        }
-      }
-    }
-  },
-  runtime: {
-    sendMessage: (msg: any, cb?: (res: any) => void) => {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(msg, cb);
-      } else {
-        console.warn("Chrome Runtime no disponible");
-        if (cb) cb(null);
-      }
-    },
-    openOptionsPage: () => {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
-        chrome.runtime.openOptionsPage();
-      }
-    }
-  },
-  tabs: {
-    query: (query: any) => {
-      return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
-          chrome.tabs.query(query, resolve);
-        } else {
-          resolve([]);
-        }
-      });
-    }
-  }
-};
 
 const App = () => {
   const [view, setView] = useState<'recorder' | 'history' | 'detail'>('recorder');
@@ -78,35 +21,47 @@ const App = () => {
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const fetchStatus = useCallback(() => {
-    safeChrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
-      if (status) setStatus(status);
-    });
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
+        if (status) setStatus(status);
+      });
+    }
   }, []);
 
   const refreshData = useCallback(() => {
-    safeChrome.runtime.sendMessage({ type: 'GET_SESSIONS' }, (data) => setSessions(data || []));
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'GET_SESSIONS' }, (data) => setSessions(data || []));
+    }
   }, []);
 
   useEffect(() => {
     fetchStatus();
     refreshData();
-    
+
     const checkTab = async () => {
-      const tabs: any = await safeChrome.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
-      setTabInfo({ isValid: !!(tab && tab.url?.startsWith('http')), url: tab?.url || '' });
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tab = tabs[0];
+        setTabInfo({ isValid: !!(tab && tab.url?.startsWith('http')), url: tab?.url || '' });
+      }
     };
     checkTab();
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       const listener = (message: any) => {
-        if (message.type === 'STATUS_UPDATED') {
-          fetchStatus();
-          refreshData();
+        // La difusión de estado desde el service-worker ya contiene los datos,
+        // así que podemos usarlos directamente en lugar de volver a pedirlos.
+        if (message.type === 'STATUS_UPDATED' && message.payload) {
+          setStatus(message.payload);
+          refreshData(); // Volvemos a pedir sesiones por si ha cambiado algo.
         }
       };
       chrome.runtime.onMessage.addListener(listener);
-      return () => chrome.runtime.onMessage.removeListener(listener);
+      return () => {
+        if (chrome.runtime?.onMessage) { // Asegurar que removeListener existe
+          chrome.runtime.onMessage.removeListener(listener);
+        }
+      };
     }
   }, [fetchStatus, refreshData]);
 
@@ -125,7 +80,7 @@ const App = () => {
 
   const startRecording = () => {
     if (!tabInfo.isValid) return;
-    safeChrome.runtime.sendMessage({ 
+    chrome.runtime.sendMessage({
       type: 'START_RECORDING', 
       payload: { name: `Session: ${new URL(tabInfo.url).hostname}`, url: tabInfo.url } 
     }, (res) => {
@@ -134,7 +89,7 @@ const App = () => {
   };
 
   const stopRecording = () => {
-    safeChrome.runtime.sendMessage({ type: 'STOP_RECORDING' }, (res) => {
+    chrome.runtime.sendMessage({ type: 'STOP_RECORDING' }, (res) => {
       refreshData();
       if (res?.session) openDetail(res.session);
     });
@@ -146,7 +101,7 @@ const App = () => {
     setIsLoadingActions(true);
     
     // Carga diferida de acciones del shard
-    safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
+    chrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
       setSelectedActions(actions || []);
       setIsLoadingActions(false);
 
@@ -157,7 +112,7 @@ const App = () => {
         .filter((id: string | null) => id && !objectUrls[id]);
 
       if (screenshotIds.length > 0) {
-        safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
+        chrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
           if (!dataUriMap) return;
 
           const newObjectUrls = { ...objectUrls };
@@ -204,7 +159,7 @@ const App = () => {
         <div className="flex gap-1">
           <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="Recorder"><Play size={16}/></button>
           <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="History"><History size={16}/></button>
-          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5" aria-label="Settings"><Settings size={16}/></button>
+          <button onClick={() => chrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5" aria-label="Settings"><Settings size={16}/></button>
         </div>
       </header>
 
@@ -261,7 +216,7 @@ const App = () => {
               <button
                 onClick={() => {
                   if (confirmingDelete === selectedSession.id) {
-                    safeChrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData);
+                    chrome.runtime.sendMessage({type:'DELETE_SESSION', payload:selectedSession.id}, refreshData);
                     setView('history');
                     setConfirmingDelete(null);
                   } else {
