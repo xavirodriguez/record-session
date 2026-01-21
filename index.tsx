@@ -1,8 +1,4 @@
 
-// Fix: Added global declaration for chrome to resolve TS errors
-/* global chrome */
-declare var chrome: any;
-
 // Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,14 +9,16 @@ import {
   Edit3, Settings, Globe, Zap, Database, AlertTriangle
 } from 'lucide-react';
 
+// Wrapper para la API de Chrome para proporcionar un fallback en desarrollo.
 const safeChrome = {
   storage: {
     local: {
-      get: (keys: string[], cb: (res: any) => void) => {
+      get: (keys: string[], cb: (items: { [key: string]: any }) => void): void => {
         if (typeof chrome !== 'undefined' && chrome.storage?.local) {
           chrome.storage.local.get(keys, cb);
         } else {
-          const res: any = {};
+          // Fallback a localStorage para testing fuera de la extensión.
+          const res: { [key: string]: any } = {};
           keys.forEach(k => {
             const val = localStorage.getItem(k);
             res[k] = val ? JSON.parse(val) : undefined;
@@ -28,18 +26,18 @@ const safeChrome = {
           cb(res);
         }
       },
-      set: (data: any, cb?: () => void) => {
+      set: (items: { [key: string]: any }, cb?: () => void): void => {
         if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          chrome.storage.local.set(data, cb);
+          chrome.storage.local.set(items, cb);
         } else {
-          Object.keys(data).forEach(k => localStorage.setItem(k, JSON.stringify(data[k])));
+          Object.keys(items).forEach(k => localStorage.setItem(k, JSON.stringify(items[k])));
           if (cb) cb();
         }
       }
     }
   },
   runtime: {
-    sendMessage: (msg: any, cb?: (res: any) => void) => {
+    sendMessage: (msg: any, cb?: (res: any) => void): void => {
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         chrome.runtime.sendMessage(msg, cb);
       } else {
@@ -47,14 +45,26 @@ const safeChrome = {
         if (cb) cb(null);
       }
     },
-    openOptionsPage: () => {
+    openOptionsPage: (): void => {
       if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
         chrome.runtime.openOptionsPage();
+      }
+    },
+    onMessage: {
+      addListener: (listener: (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void): void => {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+          chrome.runtime.onMessage.addListener(listener);
+        }
+      },
+      removeListener: (listener: (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void): void => {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+          chrome.runtime.onMessage.removeListener(listener);
+        }
       }
     }
   },
   tabs: {
-    query: (query: any) => {
+    query: (query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> => {
       return new Promise((resolve) => {
         if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
           chrome.tabs.query(query, resolve);
@@ -92,22 +102,22 @@ const App = () => {
     refreshData();
     
     const checkTab = async () => {
-      const tabs: any = await safeChrome.tabs.query({ active: true, currentWindow: true });
+      const tabs = await safeChrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
       setTabInfo({ isValid: !!(tab && tab.url?.startsWith('http')), url: tab?.url || '' });
     };
     checkTab();
 
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      const listener = (message: any) => {
-        if (message.type === 'STATUS_UPDATED') {
-          fetchStatus();
-          refreshData();
-        }
-      };
-      chrome.runtime.onMessage.addListener(listener);
-      return () => chrome.runtime.onMessage.removeListener(listener);
-    }
+    const listener = (message: any) => {
+      if (message.type === 'STATUS_UPDATED') {
+        fetchStatus();
+        refreshData();
+      }
+    };
+
+    safeChrome.runtime.onMessage.addListener(listener);
+    return () => safeChrome.runtime.onMessage.removeListener(listener);
+
   }, [fetchStatus, refreshData]);
 
   useEffect(() => {
@@ -141,6 +151,9 @@ const App = () => {
   };
 
   const openDetail = async (session: any) => {
+    // Solución para fuga de memoria: Revocar URLs anteriores antes de crear nuevas.
+    Object.values(objectUrls).forEach(URL.revokeObjectURL);
+
     setSelectedSession(session);
     setView('detail');
     setIsLoadingActions(true);
@@ -150,34 +163,42 @@ const App = () => {
       setSelectedActions(actions || []);
       setIsLoadingActions(false);
 
-      if (!actions || actions.length === 0) return;
+      if (!actions || actions.length === 0) {
+        setObjectUrls({});
+        return;
+      }
 
       const screenshotIds = actions
         .map((act: any) => act.elementId || act.screenshotId)
-        .filter((id: string | null) => id && !objectUrls[id]);
+        .filter(Boolean); // Obtener todos los IDs de capturas de esta sesión.
 
       if (screenshotIds.length > 0) {
         safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
-          if (!dataUriMap) return;
+          if (!dataUriMap) {
+            setObjectUrls({});
+            return;
+          }
 
-          const newObjectUrls = { ...objectUrls };
+          const newObjectUrls: Record<string, string> = {};
           const promises = Object.entries(dataUriMap).map(([id, dataUri]) => {
             if (dataUri && dataUri.startsWith('data:image/')) {
               return fetch(dataUri)
                 .then(res => res.blob())
                 .then(blob => {
-                  const objectUrl = URL.createObjectURL(blob);
-                  newObjectUrls[id] = objectUrl;
+                  newObjectUrls[id] = URL.createObjectURL(blob);
                 })
-                .catch(err => console.error("Error creating object URL:", err));
+                .catch(err => console.error("Error creando object URL:", err));
             }
             return Promise.resolve();
           });
 
           Promise.all(promises).then(() => {
+            // Reemplazar el estado de URLs antiguo por el nuevo.
             setObjectUrls(newObjectUrls);
           });
         });
+      } else {
+        setObjectUrls({}); // No hay capturas en estas acciones.
       }
     });
   };
@@ -237,7 +258,7 @@ const App = () => {
           <div className="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
             <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2"><Database size={10}/> Sesiones (Índice de Metadatos)</h2>
             {sessions.length === 0 && <div className="py-20 text-center opacity-20 italic text-xs text-white">No hay sesiones</div>}
-            {sessions.map((s: any) => (
+            {sessions.map((s) => (
               <div key={s.id} onClick={() => openDetail(s)} className="glass p-4 rounded-2xl border-white/5 hover:border-indigo-500/30 transition-all flex justify-between items-center cursor-pointer group">
                 <div className="min-w-0 flex-1">
                   <h4 className="font-bold truncate text-slate-200 group-hover:text-indigo-400 transition-colors">{s.title}</h4>
@@ -268,8 +289,8 @@ const App = () => {
                     setConfirmingDelete(selectedSession.id);
                   }
                 }}
-                onMouseLeave={() => setConfirmingDelete(null)}
-                onBlur={() => setConfirmingDelete(null)}
+                onMouseLeave={() => { if (confirmingDelete) setConfirmingDelete(null); }}
+                onBlur={() => { if (confirmingDelete) setConfirmingDelete(null); }}
                 className={`p-2 rounded-lg transition-all ${
                   confirmingDelete === selectedSession.id
                     ? 'bg-red-500/20 text-red-400'
