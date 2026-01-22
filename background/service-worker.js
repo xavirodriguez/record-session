@@ -147,6 +147,11 @@ async function handleAction(action, tab) {
       }
     } catch (e) {
       console.error("Error capturando pantalla:", e);
+      // Notificar a la UI del fallo para dar feedback al usuario.
+      chrome.runtime.sendMessage({
+        type: 'SCREENSHOT_FAILED',
+        payload: { message: `No se pudo tomar la captura en esta página. Las páginas protegidas (ej. chrome://) no son soportadas.` }
+      }).catch(() => {}); // Ignorar si la UI no está abierta.
     }
   }
 
@@ -169,7 +174,15 @@ async function handleStop() {
 async function injectScripts(tabId) {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content-script.js'] });
-  } catch (e) {}
+  } catch (e) {
+    console.error(`Error inyectando script en tab ${tabId}:`, e);
+    // Mostrar un badge de error temporal en el icono de la extensión para esa pestaña.
+    chrome.action.setBadgeText({ tabId, text: 'ERR' });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: '#dc2626' });
+    setTimeout(() => {
+      chrome.action.setBadgeText({ tabId, text: '' });
+    }, 3000);
+  }
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
