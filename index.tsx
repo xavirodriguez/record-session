@@ -84,6 +84,12 @@ const App = () => {
   const [tabInfo, setTabInfo] = useState({ isValid: false, url: '' });
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+
+  const showNotification = useCallback((message, type = 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  }, []);
 
   const fetchStatus = useCallback(() => {
     safeChrome.runtime.sendMessage({ type: 'GET_STATUS' }, (status) => {
@@ -111,12 +117,14 @@ const App = () => {
         if (message.type === 'STATUS_UPDATED') {
           fetchStatus();
           refreshData();
+        } else if (message.type === 'SCREENSHOT_FAILED') {
+          showNotification(message.payload.message, 'error');
         }
       };
       chrome.runtime.onMessage.addListener(listener);
       return () => chrome.runtime.onMessage.removeListener(listener);
     }
-  }, [fetchStatus, refreshData]);
+  }, [fetchStatus, refreshData, showNotification]);
 
   useEffect(() => {
     // Devuelve una función de limpieza que se ejecutará al desmontar.
@@ -215,6 +223,17 @@ const App = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 text-sm overflow-hidden antialiased font-sans">
+
+      {notification && (
+        <div className={`p-3 text-xs text-center animate-in fade-in slide-in-from-top-2 z-50 ${
+          notification.type === 'error'
+            ? 'bg-red-500/20 border-b border-red-500/30 text-red-300'
+            : 'bg-green-500/20 border-b border-green-500/30 text-green-300'
+        }`}>
+          {notification.message}
+        </div>
+      )}
+
       <header className="p-4 glass border-b border-white/10 flex justify-between items-center z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Activity size={16} className="text-white" /></div>
