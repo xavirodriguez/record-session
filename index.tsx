@@ -238,7 +238,14 @@ const App = () => {
                    <Play size={32} className="text-indigo-400 ml-1" />
                 </div>
                 <div><h2 className="text-xl font-black text-white uppercase">Grabador de Sesión</h2><p className="text-xs text-slate-500 mt-2">Arquitectura O(M) de alto rendimiento.</p></div>
-                <button onClick={startRecording} disabled={!tabInfo.isValid} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black transition-all active:scale-95">INICIAR CAPTURA</button>
+                <div className="relative w-full group">
+                  <button onClick={startRecording} disabled={!tabInfo.isValid} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">INICIAR CAPTURA</button>
+                  {!tabInfo.isValid && (
+                    <div className="absolute bottom-full mb-2 w-max max-w-xs px-3 py-1.5 bg-slate-800 text-slate-200 text-xs rounded-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none -translate-x-1/2 left-1/2 shadow-lg">
+                      La grabación no está disponible en esta página (ej. páginas chrome:// o pestañas nuevas).
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="space-y-8 animate-pulse">
