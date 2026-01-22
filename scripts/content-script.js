@@ -110,17 +110,16 @@
   const originalXhrOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     if (isRecording) {
-      this._method = method;
-      this._url = url;
+      // 🛡️ Mover la intercepción a .open() para consistencia de timing con fetch.
+      recordNetworkAction(url, method, 'xhr');
     }
     return originalXhrOpen.apply(this, [method, url, ...rest]);
   };
 
   const originalXhrSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(...args) {
-    if (isRecording && this._url) {
-        recordNetworkAction(this._url, this._method, 'xhr');
-    }
+    // La lógica de grabación ya se movió a .open.
+    // Mantenemos este patch por si se necesita lógica adicional en el futuro.
     return originalXhrSend.apply(this, args);
   };
 
