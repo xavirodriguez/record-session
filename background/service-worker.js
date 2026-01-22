@@ -145,7 +145,9 @@ async function handleAction(action, tab) {
           elementId = await screenshotService.storeExtractedElement(screenshotId, extractedBlob, action.data.viewportRect, action.data.tagName, action.data.text, action.id);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Error capturando pantalla:", e);
+    }
   }
 
   await sessions.updateSessionActions(status.sessionId, { ...action, screenshotId, elementId });

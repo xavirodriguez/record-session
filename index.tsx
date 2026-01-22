@@ -138,51 +138,66 @@ const App = () => {
   };
 
   const openDetail = async (session: any) => {
-    // REVOCAR URLs ANTERIORES PARA PREVENIR FUGAS DE MEMORIA AL CAMBIAR DE VISTA
-    // Usamos el callback de `setObjectUrls` para asegurar que tenemos el estado más reciente
-    // y evitar añadir `objectUrls` como dependencia, lo que causaría ciclos.
-    setObjectUrls(currentUrls => {
-      Object.values(currentUrls).forEach(URL.revokeObjectURL);
-      return {}; // Retornar un objeto vacío para limpiar el estado.
-    });
-
     setSelectedSession(session);
     setView('detail');
     setIsLoadingActions(true);
-    
-    // Carga diferida de acciones del shard
-    safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
-      setSelectedActions(actions || []);
-      setIsLoadingActions(false);
 
-      if (!actions || actions.length === 0) return;
+    // Limpiamos las URLs anteriores y preparamos para las nuevas.
+    setObjectUrls(currentUrls => {
+      Object.values(currentUrls).forEach(URL.revokeObjectURL);
+      return {}; // Estado limpio inicial.
+    });
+    setSelectedActions([]);
+
+    safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
+      if (!actions) {
+        setIsLoadingActions(false);
+        return;
+      }
+      setSelectedActions(actions);
 
       const screenshotIds = actions
         .map((act: any) => act.elementId || act.screenshotId)
-        .filter((id: string | null) => id && !objectUrls[id]);
+        .filter(Boolean);
 
       if (screenshotIds.length > 0) {
         safeChrome.runtime.sendMessage({ type: 'GET_SCREENSHOTS_BATCH', payload: screenshotIds }, (dataUriMap: Record<string, string>) => {
-          if (!dataUriMap) return;
+          if (!dataUriMap) {
+            setIsLoadingActions(false);
+            return;
+          }
 
-          const newObjectUrls = { ...objectUrls };
-          const promises = Object.entries(dataUriMap).map(([id, dataUri]) => {
+          const promises = Object.entries(dataUriMap).map(async ([id, dataUri]) => {
             if (dataUri && dataUri.startsWith('data:image/')) {
-              return fetch(dataUri)
-                .then(res => res.blob())
-                .then(blob => {
-                  const objectUrl = URL.createObjectURL(blob);
-                  newObjectUrls[id] = objectUrl;
-                })
-                .catch(err => console.error("Error creating object URL:", err));
+              try {
+                const res = await fetch(dataUri);
+                const blob = await res.blob();
+                return { id, url: URL.createObjectURL(blob) };
+              } catch (err) {
+                console.error("Error creating object URL:", err);
+                return null;
+              }
             }
-            return Promise.resolve();
+            return null;
           });
 
-          Promise.all(promises).then(() => {
-            setObjectUrls(newObjectUrls);
+          Promise.all(promises).then(results => {
+            const validResults = results.filter(Boolean) as { id: string, url: string }[];
+            setObjectUrls(prevUrls => {
+              // Revocar cualquier URL que pudiera haberse creado en un estado intermedio (improbable pero seguro).
+              Object.values(prevUrls).forEach(URL.revokeObjectURL);
+
+              const newUrls = { ...prevUrls }; // Mantener por si acaso, aunque debería estar vacío.
+              validResults.forEach(({ id, url }) => {
+                newUrls[id] = url;
+              });
+              return newUrls;
+            });
+            setIsLoadingActions(false);
           });
         });
+      } else {
+        setIsLoadingActions(false);
       }
     });
   };
