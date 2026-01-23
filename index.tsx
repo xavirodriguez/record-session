@@ -161,12 +161,9 @@ const App = () => {
     setView('detail');
     setIsLoadingActions(true);
 
-    // Limpiamos las URLs anteriores y preparamos para las nuevas.
-    setObjectUrls(currentUrls => {
-      Object.values(currentUrls).forEach(URL.revokeObjectURL);
-      return {}; // Estado limpio inicial.
-    });
+    // Clear the view immediately while new data is fetched.
     setSelectedActions([]);
+    setObjectUrls({});
 
     safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
       if (!actions) {
@@ -203,10 +200,10 @@ const App = () => {
           Promise.all(promises).then(results => {
             const validResults = results.filter(Boolean) as { id: string, url: string }[];
             setObjectUrls(prevUrls => {
-              // Revocar cualquier URL que pudiera haberse creado en un estado intermedio (improbable pero seguro).
+              // Atomic update: revoke all previous URLs and set the new ones.
               Object.values(prevUrls).forEach(URL.revokeObjectURL);
 
-              const newUrls = { ...prevUrls }; // Mantener por si acaso, aunque debería estar vacío.
+              const newUrls = {}; // Start with a clean slate.
               validResults.forEach(({ id, url }) => {
                 newUrls[id] = url;
               });
