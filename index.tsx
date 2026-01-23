@@ -48,6 +48,18 @@ const safeChrome = {
       if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
         chrome.runtime.openOptionsPage();
       }
+    },
+    onMessage: {
+      addListener: (listener: (message: any) => void) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+          chrome.runtime.onMessage.addListener(listener);
+        }
+      },
+      removeListener: (listener: (message: any) => void) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+          chrome.runtime.onMessage.removeListener(listener);
+        }
+      }
     }
   },
   tabs: {
@@ -112,18 +124,16 @@ const App = () => {
     };
     checkTab();
 
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      const listener = (message: any) => {
-        if (message.type === 'STATUS_UPDATED') {
-          fetchStatus();
-          refreshData();
-        } else if (message.type === 'SCREENSHOT_FAILED') {
-          showNotification(message.payload.message, 'error');
-        }
-      };
-      chrome.runtime.onMessage.addListener(listener);
-      return () => chrome.runtime.onMessage.removeListener(listener);
-    }
+    const listener = (message: any) => {
+      if (message.type === 'STATUS_UPDATED') {
+        fetchStatus();
+        refreshData();
+      } else if (message.type === 'SCREENSHOT_FAILED') {
+        showNotification(message.payload.message, 'error');
+      }
+    };
+    safeChrome.runtime.onMessage.addListener(listener);
+    return () => safeChrome.runtime.onMessage.removeListener(listener);
   }, [fetchStatus, refreshData, showNotification]);
 
   useEffect(() => {
