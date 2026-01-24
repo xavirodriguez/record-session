@@ -1,6 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-
 :root {
   --bg-main: #0f172a;
   --bg-darker: #020617;
@@ -185,3 +183,13 @@ img { max-width: 100%; height: auto; display: block; }
 .top-4 { top: 1rem; }
 .right-4 { right: 1rem; }
 .z-50 { z-index: 50; }
+
+/* Icon Sizing Utilities */
+.icon-size-8 { width: 8px; height: 8px; }
+.icon-size-10 { width: 10px; height: 10px; }
+.icon-size-12 { width: 12px; height: 12px; }
+.icon-size-16 { width: 16px; height: 16px; }
+.icon-size-18 { width: 18px; height: 18px; }
+.icon-size-24 { width: 24px; height: 24px; }
+.icon-size-32 { width: 32px; height: 32px; }
+.icon-size-40 { width: 40px; height: 40px; }
