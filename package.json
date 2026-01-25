@@ -4,7 +4,8 @@
   "description": "Chrome Extension for recording technical user journeys with network and UI auditing.",
   "type": "module",
   "scripts": {
-    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html', 'index.css'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
+    "build:css": "node scripts/build-css.cjs",
+    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', { recursive: true });\" && esbuild index.tsx background/service-worker.js scripts/content-script.js options.js --bundle --outdir=dist --format=esm --loader:.tsx=tsx --loader:.js=js --minify && npm run build:css && node -e \"const fs = require('fs'); ['manifest.json', 'index.html', 'options.html'].forEach(f => fs.copyFileSync(f, 'dist/' + f));\"",
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
@@ -14,10 +15,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/chrome": "^0.0.268",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.23",
     "esbuild": "^0.27.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.4.5"
   }
 }
