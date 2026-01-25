@@ -132,15 +132,14 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
+      const dataUrl = await new Promise((resolve, reject) => {
         chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
+          // 🛡️ Verificar chrome.runtime.lastError es CRÍTICO para APIs con callback.
           if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
+            return reject(new Error(chrome.runtime.lastError.message));
           }
           if (!dataUrl) {
-            reject(new Error("Could not get data URL from capture."));
-            return;
+            return reject(new Error("La captura de pantalla devolvió un dataUrl vacío."));
           }
           resolve(dataUrl);
         });
