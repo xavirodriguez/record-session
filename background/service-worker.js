@@ -148,9 +148,13 @@ async function handleAction(action, tab) {
       screenshotId = await screenshotService.storeScreenshot(dataUrl, tab.url, tab.id, status.sessionId);
       if (action.data?.viewportRect) {
         const db = await screenshotService.openDatabase();
-        const screenshotObj = await new Promise(r => {
-          const req = db.transaction('screenshots').objectStore('screenshots').get(screenshotId);
-          req.onsuccess = () => r(req.result);
+        const screenshotObj = await new Promise((resolve, reject) => {
+          const transaction = db.transaction('screenshots');
+          const objectStore = transaction.objectStore('screenshots');
+          const request = objectStore.get(screenshotId);
+
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
         });
         if (screenshotObj?.data) {
           const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
