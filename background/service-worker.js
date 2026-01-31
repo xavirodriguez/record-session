@@ -132,7 +132,7 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
+      const dataUrl = await new Promise((resolve, reject) => {
         chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));

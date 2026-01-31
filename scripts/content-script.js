@@ -14,14 +14,8 @@
 
   const sanitizeHTML = (str) => {
     if (!str) return '';
-    try {
-      const temp = document.createElement('div');
-      temp.innerHTML = str;
-      return temp.textContent || temp.innerText || '';
-    } catch(e) {
-      // En caso de un error de parseo, devolver el string original sin etiquetas.
-      return str.replace(/<\/?[^>]+(>|$)/g, "");
-    }
+    // 🛡️ Sentinel: Use regex to strip HTML tags instead of innerHTML to prevent XSS.
+    return str.replace(/<\/?[^>]+(>|$)/g, "");
   };
 
   // Escuchar actualizaciones de estado desde el service worker
