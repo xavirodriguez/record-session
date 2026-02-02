@@ -18,6 +18,15 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+chrome.runtime.onStartup.addListener(() => {
+  recordingStatus.updateStatus({
+    isRecording: false,
+    isPaused: false,
+    sessionId: null,
+    startTime: null
+  });
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handle = async () => {
     switch (message.type) {
@@ -132,8 +141,12 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
+      const config = await getConfig();
+      const qualityMap = { low: 30, medium: 60, high: 90 };
+      const quality = qualityMap[config.quality] || 60;
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality }, (dataUrl) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
             return;
@@ -148,9 +161,10 @@ async function handleAction(action, tab) {
       screenshotId = await screenshotService.storeScreenshot(dataUrl, tab.url, tab.id, status.sessionId);
       if (action.data?.viewportRect) {
         const db = await screenshotService.openDatabase();
-        const screenshotObj = await new Promise(r => {
+        const screenshotObj = await new Promise((r, j) => {
           const req = db.transaction('screenshots').objectStore('screenshots').get(screenshotId);
           req.onsuccess = () => r(req.result);
+          req.onerror = () => j(req.error);
         });
         if (screenshotObj?.data) {
           const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
@@ -210,7 +224,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Funciones de configuración centralizadas
 async function getConfig() {
   const result = await chrome.storage.local.get(['webjourney_config']);
-  return result.webjourney_config || { quality: 80, autoOpen: false };
+  return result.webjourney_config || { quality: 'medium', autoOpen: false };
 }
 
 async function setConfig(config) {
