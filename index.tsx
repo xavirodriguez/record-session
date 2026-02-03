@@ -79,10 +79,10 @@ const safeChrome = {
 // to prevent being redeclared on every render.
 const getActionIcon = (type: string) => {
   switch(type) {
-    case 'click': return <MousePointer2 className="icon-size-12" />;
-    case 'input': return <Edit3 className="icon-size-12" />;
-    case 'network': return <Globe className="icon-size-12 text-indigo-400" />;
-    default: return <Zap className="icon-size-12" />;
+    case 'click': return <MousePointer2 className="icon-xs" />;
+    case 'input': return <Edit3 className="icon-xs" />;
+    case 'network': return <Globe className="icon-xs text-indigo-400" />;
+    default: return <Zap className="icon-xs" />;
   }
 };
 
@@ -246,16 +246,16 @@ const App = () => {
 
       <header className="p-4 glass border-b border-white/10 flex justify-between items-center z-50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Activity className="icon-size-16 text-white" /></div>
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Activity className="icon-sm text-white" /></div>
           <div>
             <span className="font-bold tracking-tight text-white uppercase text-[10px] block leading-none">Journey Pro</span>
             <span className="text-indigo-400 text-[9px] font-black tracking-widest uppercase">Fragmented Auditor</span>
           </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="Recorder"><Play className="icon-size-16"/></button>
-          <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="History"><History className="icon-size-16"/></button>
-          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5" aria-label="Settings"><Settings className="icon-size-16"/></button>
+          <button onClick={() => setView('recorder')} className={`p-2 rounded-lg ${view === 'recorder' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="Recorder"><Play className="icon-sm"/></button>
+          <button onClick={() => { setView('history'); refreshData(); }} className={`p-2 rounded-lg ${view === 'history' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`} aria-label="History"><History className="icon-sm"/></button>
+          <button onClick={() => safeChrome.runtime.openOptionsPage()} className="p-2 text-slate-400 hover:bg-white/5" aria-label="Settings"><Settings className="icon-sm"/></button>
         </div>
       </header>
 
@@ -266,7 +266,7 @@ const App = () => {
               <>
                 <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto bg-indigo-500/10 border border-indigo-500/20 shadow-2xl shadow-indigo-500/10 relative">
                    <div className="absolute inset-0 rounded-full border border-indigo-500/20 animate-ping opacity-20"></div>
-                   <Play className="icon-size-32 text-indigo-400 ml-1" />
+                   <Play className="icon-lg text-indigo-400 ml-1" />
                 </div>
                 <div><h2 className="text-xl font-black text-white uppercase">Grabador de Sesión</h2><p className="text-xs text-slate-500 mt-2">Arquitectura O(M) de alto rendimiento.</p></div>
                 <div className="relative w-full group">
@@ -280,12 +280,12 @@ const App = () => {
               </>
             ) : (
               <div className="space-y-8 animate-pulse">
-                <div className="w-28 h-28 mx-auto rounded-full flex items-center justify-center border-4 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]"><Square className="icon-size-40 text-red-500" fill="currentColor"/></div>
+                <div className="w-28 h-28 mx-auto rounded-full flex items-center justify-center border-4 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]"><Square className="icon-xl text-red-500" fill="currentColor"/></div>
                 <div className="space-y-1">
                   <h2 className="text-2xl font-black text-red-500 uppercase tracking-[0.2em]">Grabando</h2>
-                  <p className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1 uppercase tracking-widest"><Globe className="icon-size-10 text-indigo-400"/> Fragmentación Activa</p>
+                  <p className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1 uppercase tracking-widest"><Globe className="icon-xxs text-indigo-400"/> Fragmentación Activa</p>
                 </div>
-                <button onClick={stopRecording} className="bg-red-600 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-2 active:scale-95 transition-all"><Square className="icon-size-16" fill="white"/> FINALIZAR</button>
+                <button onClick={stopRecording} className="bg-red-600 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-2 active:scale-95 transition-all"><Square className="icon-sm" fill="white"/> FINALIZAR</button>
               </div>
             )}
           </div>
@@ -293,7 +293,7 @@ const App = () => {
 
         {view === 'history' && (
           <div className="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
-            <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2"><Database className="icon-size-10"/> Sesiones (Índice de Metadatos)</h2>
+            <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2"><Database className="icon-xxs"/> Sesiones (Índice de Metadatos)</h2>
             {sessions.length === 0 && <div className="py-20 text-center opacity-20 italic text-xs text-white">No hay sesiones</div>}
             {sessions.map((s: any) => (
               <div key={s.id} onClick={() => openDetail(s)} className="glass p-4 rounded-2xl border-white/5 hover:border-indigo-500/30 transition-all flex justify-between items-center cursor-pointer group">
@@ -302,10 +302,10 @@ const App = () => {
                   <div className="flex gap-2 mt-1 items-center">
                     <span className="text-[9px] text-slate-600 font-bold uppercase">{new Date(s.createdDate).toLocaleDateString()}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                    <span className="text-[9px] text-indigo-400 font-black uppercase flex items-center gap-1"><Zap className="icon-size-8"/> {s.actionCount} Eventos</span>
+                    <span className="text-[9px] text-indigo-400 font-black uppercase flex items-center gap-1"><Zap className="icon-xxs"/> {s.actionCount} Eventos</span>
                   </div>
                 </div>
-                <ChevronRight className="icon-size-16 text-slate-700 group-hover:translate-x-1 group-hover:text-indigo-400"/>
+                <ChevronRight className="icon-sm text-slate-700 group-hover:translate-x-1 group-hover:text-indigo-400"/>
               </div>
             ))}
           </div>
@@ -314,7 +314,7 @@ const App = () => {
         {view === 'detail' && selectedSession && (
           <div className="h-full flex flex-col overflow-hidden animate-in fade-in">
             <div className="p-4 border-b border-white/10 flex items-center justify-between glass">
-              <button onClick={() => { setView('history'); setConfirmingDelete(null); }} className="p-2 text-slate-500 hover:text-white" aria-label="Back to history"><ArrowLeft className="icon-size-18"/></button>
+              <button onClick={() => { setView('history'); setConfirmingDelete(null); }} className="p-2 text-slate-500 hover:text-white" aria-label="Back to history"><ArrowLeft className="icon-md"/></button>
               <h3 className="font-black text-[10px] uppercase tracking-widest truncate max-w-[150px]">{selectedSession.title}</h3>
               <button
                 onClick={() => {
@@ -335,14 +335,14 @@ const App = () => {
                 }`}
                 aria-label={confirmingDelete === selectedSession.id ? 'Confirm delete' : 'Delete session'}
               >
-                {confirmingDelete === selectedSession.id ? <AlertTriangle className="icon-size-16"/> : <Trash2 className="icon-size-16"/>}
+                {confirmingDelete === selectedSession.id ? <AlertTriangle className="icon-sm"/> : <Trash2 className="icon-sm"/>}
               </button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
               {isLoadingActions ? (
                 <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
-                  <Activity className="icon-size-24 animate-spin text-indigo-500"/>
+                  <Activity className="icon-lg animate-spin text-indigo-500"/>
                   <span className="text-[10px] font-black uppercase tracking-widest">Cargando fragmento de acciones...</span>
                 </div>
               ) : (
@@ -385,7 +385,7 @@ const App = () => {
           {status.isRecording ? 'Fragmentando Datos en Tiempo Real' : 'Arquitectura Optimizada'}
         </div>
         <div className="flex items-center gap-1">
-          <Zap className="icon-size-8 text-indigo-500"/>
+          <Zap className="icon-xxs text-indigo-500"/>
           <span>STORAGE v2 SHARDED</span>
         </div>
       </footer>
