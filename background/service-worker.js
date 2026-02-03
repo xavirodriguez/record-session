@@ -132,15 +132,14 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
+      const dataUrl = await new Promise((resolve, reject) => {
         chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
+          // 🛡️ Verificar chrome.runtime.lastError es CRÍTICO para APIs con callback.
           if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
+            return reject(new Error(chrome.runtime.lastError.message));
           }
           if (!dataUrl) {
-            reject(new Error("Could not get data URL from capture."));
-            return;
+            return reject(new Error("La captura de pantalla devolvió un dataUrl vacío."));
           }
           resolve(dataUrl);
         });
@@ -148,9 +147,13 @@ async function handleAction(action, tab) {
       screenshotId = await screenshotService.storeScreenshot(dataUrl, tab.url, tab.id, status.sessionId);
       if (action.data?.viewportRect) {
         const db = await screenshotService.openDatabase();
-        const screenshotObj = await new Promise(r => {
-          const req = db.transaction('screenshots').objectStore('screenshots').get(screenshotId);
-          req.onsuccess = () => r(req.result);
+        const screenshotObj = await new Promise((resolve, reject) => {
+          const transaction = db.transaction('screenshots');
+          const objectStore = transaction.objectStore('screenshots');
+          const request = objectStore.get(screenshotId);
+
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
         });
         if (screenshotObj?.data) {
           const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
