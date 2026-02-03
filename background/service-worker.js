@@ -132,8 +132,14 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
+      const config = await getConfig();
+      const qualityMap = { 'low': 30, 'medium': 60, 'high': 90 };
+      const numericQuality = typeof config.quality === 'string'
+        ? (qualityMap[config.quality] || 60)
+        : (config.quality || 60);
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: numericQuality }, (dataUrl) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
             return;
@@ -148,9 +154,10 @@ async function handleAction(action, tab) {
       screenshotId = await screenshotService.storeScreenshot(dataUrl, tab.url, tab.id, status.sessionId);
       if (action.data?.viewportRect) {
         const db = await screenshotService.openDatabase();
-        const screenshotObj = await new Promise(r => {
+        const screenshotObj = await new Promise((resolve, reject) => {
           const req = db.transaction('screenshots').objectStore('screenshots').get(screenshotId);
-          req.onsuccess = () => r(req.result);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
         });
         if (screenshotObj?.data) {
           const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
