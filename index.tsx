@@ -171,9 +171,12 @@ const App = () => {
     setView('detail');
     setIsLoadingActions(true);
 
-    // Clear the view immediately while new data is fetched.
+    // Clear the view immediately while new data is fetched, revoking old URLs.
     setSelectedActions([]);
-    setObjectUrls({});
+    setObjectUrls(prevUrls => {
+        Object.values(prevUrls).forEach(URL.revokeObjectURL);
+        return {};
+    });
 
     safeChrome.runtime.sendMessage({ type: 'GET_SESSION_ACTIONS', payload: session.id }, (actions: any[]) => {
       if (!actions) {

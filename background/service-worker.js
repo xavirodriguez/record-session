@@ -149,13 +149,11 @@ async function handleAction(action, tab) {
         const db = await screenshotService.openDatabase();
         const screenshotObj = await new Promise((resolve, reject) => {
           const transaction = db.transaction('screenshots');
-          transaction.onerror = () => reject(new Error("Error en la transacción de IndexedDB."));
-
           const objectStore = transaction.objectStore('screenshots');
-          const req = objectStore.get(screenshotId);
+          const request = objectStore.get(screenshotId);
 
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(new Error("Error al leer la captura de IndexedDB."));
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
         });
         if (screenshotObj?.data) {
           const extractedBlob = await screenshotService.extractElementFromScreenshot(screenshotObj.data, action.data.viewportRect);
