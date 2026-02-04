@@ -133,11 +133,13 @@ async function handleAction(action, tab) {
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
       const config = await getConfig();
-      const quality = mapQualityToNumeric(config.quality);
+      const qualityMap = { 'low': 30, 'medium': 60, 'high': 90 };
+      const numericQuality = typeof config.quality === 'string'
+        ? (qualityMap[config.quality] || 60)
+        : (config.quality || 60);
 
       const dataUrl = await new Promise((resolve, reject) => {
-        chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality }, (dataUrl) => {
-          // 🛡️ Verificar chrome.runtime.lastError es CRÍTICO para APIs con callback.
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: numericQuality }, (dataUrl) => {
           if (chrome.runtime.lastError) {
             return reject(new Error(chrome.runtime.lastError.message));
           }

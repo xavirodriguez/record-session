@@ -14,7 +14,7 @@
 
   const sanitizeHTML = (str) => {
     if (!str) return '';
-    // 🛡️ Sentinel: Use regex to strip HTML tags instead of innerHTML to prevent XSS.
+    // 🛡️ Sentinel: Usar regex en lugar de innerHTML para prevenir XSS durante la sanitización.
     return str.replace(/<\/?[^>]+(>|$)/g, "");
   };
 
