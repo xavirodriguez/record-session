@@ -4,7 +4,7 @@ import * as screenshotService from '../lib/screenshot-service.js';
 import * as sessions from '../lib/sessions.js';
 import * as recordingStatus from '../lib/recording-status.js';
 import { ensureOriginPermission } from '../lib/permissions.js';
-import { ActionSchema } from '../lib/domain-schemas.js';
+import { ActionSchema, AppConfigSchema } from '../lib/domain-schemas.js';
 
 // Promise chain para serializar el procesamiento de acciones y prevenir race conditions.
 let actionProcessingPromise = Promise.resolve();
@@ -132,8 +132,11 @@ async function handleAction(action, tab) {
 
   if (['click', 'input', 'submit'].includes(action.type) && tab?.id) {
     try {
+      const config = await getConfig();
+      const quality = mapQualityToNumeric(config.quality);
+
       const dataUrl = await new Promise((resolve, reject) => {
-        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 30 }, (dataUrl) => {
+        chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality }, (dataUrl) => {
           // 🛡️ Verificar chrome.runtime.lastError es CRÍTICO para APIs con callback.
           if (chrome.runtime.lastError) {
             return reject(new Error(chrome.runtime.lastError.message));
@@ -210,9 +213,28 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Funciones de configuración centralizadas
 async function getConfig() {
   const result = await chrome.storage.local.get(['webjourney_config']);
-  return result.webjourney_config || { quality: 80, autoOpen: false };
+  const rawConfig = result.webjourney_config || {};
+  return AppConfigSchema.parse(rawConfig);
+}
+
+function mapQualityToNumeric(quality) {
+  const mapping = {
+    low: 30,
+    medium: 60,
+    high: 90
+  };
+  return mapping[quality] || 60;
 }
 
 async function setConfig(config) {
   await chrome.storage.local.set({ webjourney_config: config });
 }
+
+chrome.runtime.onStartup.addListener(() => {
+  recordingStatus.updateStatus({
+    isRecording: false,
+    isPaused: false,
+    sessionId: null,
+    startTime: null
+  });
+});
