@@ -3,6 +3,7 @@
 // Main React component for the extension's UI.
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ensureOriginPermission } from './lib/permissions.js';
 import { 
   Play, Square, Trash2, MousePointer2, 
   History, ArrowLeft,
@@ -149,8 +150,16 @@ const App = () => {
     };
   }, []); // El array vacío asegura que esto solo se ejecute al montar/desmontar.
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!tabInfo.isValid) return;
+
+    // Solicitar permisos de host (User Gesture CRÍTICO para MV3)
+    const hasPerm = await ensureOriginPermission(tabInfo.url);
+    if (!hasPerm) {
+      showNotification("Se requieren permisos para grabar en este sitio.", "error");
+      return;
+    }
+
     safeChrome.runtime.sendMessage({ 
       type: 'START_RECORDING', 
       payload: { name: `Session: ${new URL(tabInfo.url).hostname}`, url: tabInfo.url } 

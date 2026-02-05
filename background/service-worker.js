@@ -3,7 +3,6 @@
 import * as screenshotService from '../lib/screenshot-service.js';
 import * as sessions from '../lib/sessions.js';
 import * as recordingStatus from '../lib/recording-status.js';
-import { ensureOriginPermission } from '../lib/permissions.js';
 import { ActionSchema, AppConfigSchema } from '../lib/domain-schemas.js';
 
 // Promise chain para serializar el procesamiento de acciones y prevenir race conditions.
@@ -105,9 +104,8 @@ async function updateBadge(isRecording, isPaused) {
 
 async function handleStart(payload) {
   try {
-    const hasPerm = await ensureOriginPermission(payload.url);
-    if (!hasPerm) return { success: false, error: 'Permisos denegados' };
-    
+    // Ya no solicitamos permisos aquí porque fallaría en el Service Worker (requiere User Gesture).
+    // La UI (popup) se encarga de asegurar que los permisos existan antes de llamar a START_RECORDING.
     const session = await sessions.createRecordingSession(payload.name, payload.url);
     await recordingStatus.updateStatus({ isRecording: true, isPaused: false, sessionId: session.id, startTime: Date.now() });
     updateBadge(true, false);

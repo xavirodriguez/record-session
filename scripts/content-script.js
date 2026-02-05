@@ -14,8 +14,8 @@
 
   const sanitizeHTML = (str) => {
     if (!str) return '';
-    // 🛡️ Sentinel: Use regex to strip HTML tags instead of innerHTML to prevent XSS.
-    return str.replace(/<\/?[^>]+(>|$)/g, "");
+    // 🛡️ Sentinel: Use a more comprehensive regex to strip all HTML tags.
+    return str.replace(/<[^>]*>?/gm, "").trim();
   };
 
   // Escuchar actualizaciones de estado desde el service worker
@@ -126,6 +126,9 @@
 
   const recordNetworkAction = (url, method, apiType) => {
     if (url.startsWith('chrome-extension://')) return;
+
+    // 🛡️ Sentinel: Solo registrar protocolos seguros (http/https) para evitar capturar data: uris u otros esquemas.
+    if (!url.startsWith('http:') && !url.startsWith('https:')) return;
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         chrome.runtime.sendMessage({
