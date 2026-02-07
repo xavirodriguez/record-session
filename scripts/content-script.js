@@ -14,8 +14,8 @@
 
   const sanitizeHTML = (str) => {
     if (!str) return '';
-    // 🛡️ Sentinel: Use a more comprehensive regex to strip all HTML tags.
-    return str.replace(/<[^>]*>?/gm, "").trim();
+    // 🛡️ Sentinel: Enhanced sanitization to strip HTML and normalize whitespace.
+    return str.replace(/<[^>]*>?/gm, "").replace(/[\r\n\t]+/g, " ").trim();
   };
 
   // Escuchar actualizaciones de estado desde el service worker
@@ -88,9 +88,16 @@
 
   document.addEventListener('change', (e) => {
     if (!isRecording) return;
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
-      recordAction('input', e.target, { 
-        value: e.target.type === 'password' ? '***' : e.target.value 
+    const el = e.target;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) {
+      // 🛡️ Sentinel: Privacy-first redaction for sensitive fields.
+      const isSensitive = el.type === 'password' ||
+                         el.hasAttribute('data-private') ||
+                         el.getAttribute('autocomplete') === 'off' ||
+                         /cvv|card|pass|token|secret/i.test(el.name || el.id || "");
+
+      recordAction('input', el, {
+        value: isSensitive ? '***' : el.value
       });
     }
   }, true);

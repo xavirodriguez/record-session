@@ -40,11 +40,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         // Encadenamos la nueva acción a la promesa existente para asegurar ejecución secuencial.
-        actionProcessingPromise = actionProcessingPromise
+        const currentActionTask = actionProcessingPromise
           .then(() => handleAction(validation.data, sender.tab))
           .catch(e => {
             console.error("Error handling action:", e);
           });
+
+        actionProcessingPromise = currentActionTask;
+
+        // 🛡️ Await the current task to keep the service worker alive until the action is persisted.
+        await currentActionTask;
 
         return { success: true };
       case 'GET_SESSIONS':
@@ -89,7 +94,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   };
 
-  handle().then(sendResponse);
+  handle()
+    .then(sendResponse)
+    .catch(error => {
+      console.error("Message handling error:", error);
+      sendResponse({ success: false, error: error.message });
+    });
   return true; 
 });
 
